@@ -1,0 +1,134 @@
+# =============================================================================
+# Aether Portals Configuration / Конфигурация порталов Aether
+# =============================================================================
+#
+# This file defines portal configurations for seamless player transfers
+# between servers. Supports multiple portal types:
+#   - BOUNDARY: World edge portals (triggered by coordinates)
+#   - REGION: Area-based portals (triggered by entering a region)
+#   - NPC: Entity-based portals (triggered by NPC interaction)
+#
+# Этот файл определяет конфигурацию порталов для бесшовного переноса
+# игроков между серверами. Поддерживаемые типы:
+#   - BOUNDARY: Порталы на границе мира (по координатам)
+#   - REGION: Зональные порталы (при входе в регион)
+#   - NPC: Порталы-NPC (при взаимодействии с NPC)
+# =============================================================================
+
+portals:
+  # Enable/disable portal system globally
+  # Включить/выключить систему порталов глобально
+  enabled: true
+
+  # Default portal settings
+  # Настройки по умолчанию для порталов
+  defaults:
+    # Enable seamless transfer (pre-load chunks before transfer)
+    # Использовать бесшовный перенос (предзагрузка чанков)
+    seamless: true
+
+    # Cooldown between portal uses in seconds
+    # Кулдаун между использованиями портала в секундах
+    cooldown: 3
+
+    # Message shown during transfer
+    # Сообщение при переносе
+    transfer-message: "&aConnecting to {server}..."
+
+  # Portal definitions / Определения порталов
+  list:
+    # EXAMPLE 1: World boundary portal
+    # ПРИМЕР 1: Портал на границе мира
+    survival-boundary:
+      # Portal type: BOUNDARY, REGION, or NPC
+      # Тип портала: BOUNDARY, REGION или NPC
+      type: BOUNDARY
+
+      # Source server name (where portal exists)
+      # Исходный сервер (где находится портал)
+      source-server: lobby
+
+      # Target server name (where player transfers to)
+      # Целевой сервер (куда переносится игрок)
+      target-server: survival
+
+      # Use seamless transfer (override default)
+      # Использовать бесшовный перенос
+      seamless: true
+
+      # Boundary configuration (for type: BOUNDARY)
+      # Конфигурация границы (для type: BOUNDARY)
+      boundary:
+        # World name where boundary is active
+        # Мир, в котором активна граница
+        world: world
+
+        # Direction of boundary trigger
+        # Направление срабатывания границы
+        # Options: NORTH, SOUTH, EAST, WEST, UP, DOWN
+        direction: EAST
+
+        # Threshold coordinate for the boundary
+        # Координата порога границы
+        threshold: 1000
+
+    # EXAMPLE 2: Region-based portal
+    # ПРИМЕР 2: Зональный портал
+    minigames-portal:
+      type: REGION
+      source-server: lobby
+      target-server: minigames
+      seamless: true
+
+      # Region configuration (for type: REGION)
+      # Конфигурация региона (для type: REGION)
+      region:
+        # World name
+        # Название мира
+        world: lobby
+
+        # First corner of portal region (min coordinates)
+        # Первый угол региона портала (мин. координаты)
+        min-x: 100
+        min-y: 64
+        min-z: 100
+
+        # Second corner of portal region (max coordinates)
+        # Второй угол региона портала (макс. координаты)
+        max-x: 110
+        max-y: 70
+        max-z: 110
+
+    # EXAMPLE 3: NPC portal
+    # ПРИМЕР 3: NPC портал
+    # npc-portal:
+    #   type: NPC
+    #   source-server: lobby
+    #   target-server: skyblock
+    #   seamless: true
+    #   npc:
+    #     id: "portal-npc-1"
+    #     skin: "eyJ0ZXh0dXJlcyI6..."
+
+# =============================================================================
+# Chunk Streaming (Experimental) / Стриминг чанков (Экспериментально)
+# =============================================================================
+# Pre-loads chunks from target server before transfer for seamless experience.
+# WARNING: This feature is experimental and may cause performance issues.
+#
+# Предзагружает чанки с целевого сервера перед переносом для бесшовного опыта.
+# ВНИМАНИЕ: Эта функция экспериментальная и может вызвать проблемы с производительностью.
+# =============================================================================
+
+chunk-streaming:
+  # Enable chunk streaming (EXPERIMENTAL - disabled by default)
+  # Включить стриминг чанков (ЭКСПЕРИМЕНТАЛЬНО - выключен по умолчанию)
+  enabled: false
+
+  # Number of chunks to pre-load (radius around spawn point)
+  # Количество чанков для предзагрузки (радиус вокруг точки спавна)
+  preload-radius: 3
+
+  # Maximum time to wait for chunks in milliseconds
+  # Максимальное время ожидания чанков в миллисекундах
+  timeout-ms: 5000

@@ -7,7 +7,10 @@ import miroshka.aether.api.AetherAPIProvider;
 import miroshka.aether.api.CircuitBreakerEvent;
 import miroshka.aether.api.ConnectionStatus;
 import miroshka.aether.common.event.AetherEventBus;
+import miroshka.aether.common.event.ChunkDataReceivedEvent;
+import miroshka.aether.common.event.EventBroadcastReceivedEvent;
 import miroshka.aether.common.event.NetworkStateUpdatedEvent;
+import miroshka.aether.common.event.PDCSyncReceivedEvent;
 import miroshka.aether.common.protocol.*;
 import miroshka.aether.server.AetherServerAPI;
 import miroshka.aether.server.config.NodeConfig;
@@ -70,6 +73,9 @@ public final class NodePacketHandler extends ChannelInboundHandlerAdapter {
             case NetworkStatePacket state -> handleNetworkState(state);
             case CircuitBreakerTrippedPacket cb -> handleCircuitBreaker(cb);
             case ProtocolErrorPacket error -> handleProtocolError(error);
+            case ChunkDataPacket chunk -> handleChunkData(chunk);
+            case PDCSyncPacket pdc -> handlePDCSync(pdc);
+            case EventBroadcastPacket event -> handleEventBroadcast(event);
             default -> LOGGER.warn("Unexpected packet from Master: {}", packet.getClass().getSimpleName());
         }
     }
@@ -122,6 +128,24 @@ public final class NodePacketHandler extends ChannelInboundHandlerAdapter {
     private void handleProtocolError(ProtocolErrorPacket error) {
         LOGGER.error("Protocol error from Master: {} - {} (packet 0x{})",
                 error.errorCode(), error.details(), Integer.toHexString(error.failedPacketId()));
+    }
+
+    private void handleChunkData(ChunkDataPacket chunk) {
+        AetherEventBus.instance().publish(ChunkDataReceivedEvent.of(chunk));
+        LOGGER.debug("Received chunk data: ({}, {}) action={}",
+                chunk.chunkX(), chunk.chunkZ(), chunk.action());
+    }
+
+    private void handlePDCSync(PDCSyncPacket pdc) {
+        AetherEventBus.instance().publish(PDCSyncReceivedEvent.of(pdc));
+        LOGGER.debug("Received PDC sync: player={}, operation={}",
+                pdc.playerUuid(), pdc.operation());
+    }
+
+    private void handleEventBroadcast(EventBroadcastPacket event) {
+        AetherEventBus.instance().publish(EventBroadcastReceivedEvent.of(event));
+        LOGGER.debug("Received event broadcast: type={}, source={}",
+                event.eventType(), event.sourceServer());
     }
 
     @Override

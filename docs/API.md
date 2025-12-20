@@ -1,274 +1,278 @@
 # Aether API Documentation
 
-This document describes how to use Aether API in your AllayMC plugins to access cross-server data and state.
+Full API documentation for Aether Network Core.
 
 ## Table of Contents
 - [Getting Started](#getting-started)
-- [Basic Usage](#basic-usage)
-- [API Methods](#api-methods)
-- [Events](#events)
-- [PlaceholderAPI Integration](#placeholderapi-integration)
+- [Basic API](#basic-api)
+- [Event Bridge](#event-bridge)
+- [Portal Manager](#portal-manager)
+- [Load Balancer](#load-balancer)
+- [Distributed PDC](#distributed-pdc)
+- [LuckPerms Integration](#luckperms-integration)
+- [PlaceholderAPI](#placeholderapi)
 - [Examples](#examples)
 
 ---
 
 ## Getting Started
 
-### Add Dependency
-
-Add Aether API to your plugin's `build.gradle.kts`:
+### Gradle (Kotlin DSL)
 
 ```kotlin
-repositories {
-    mavenCentral()
-    maven("https://jitpack.io")
+// settings.gradle.kts
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        mavenCentral()
+        maven { url = uri("https://jitpack.io") }
+    }
 }
 
+// build.gradle.kts
 dependencies {
-    compileOnly("com.github.Miroshka000:Aether:aether-api:VERSION")
+    implementation("com.github.Miroshka000.Aether:aether-api:v1.0.0")
 }
 ```
 
-### Specify Dependency in Plugin
+### Gradle (Groovy)
 
-Add `aether-server` as a dependency in your plugin descriptor:
-
-```kotlin
-allay {
-    plugin {
-        depend = listOf("aether-server")
+```groovy
+// settings.gradle
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        mavenCentral()
+        maven { url 'https://jitpack.io' }
     }
 }
+
+// build.gradle
+dependencies {
+    implementation 'com.github.Miroshka000.Aether:aether-api:v1.0.0'
+}
+```
+
+### Maven
+
+```xml
+<repositories>
+    <repository>
+        <id>jitpack.io</id>
+        <url>https://jitpack.io</url>
+    </repository>
+</repositories>
+
+<dependency>
+    <groupId>com.github.Miroshka000.Aether</groupId>
+    <artifactId>aether-api</artifactId>
+    <version>v1.0.0</version>
+</dependency>
 ```
 
 ---
 
-## Basic Usage
+## Basic API
 
-### Getting the API Instance
+### Getting Instance
 
 ```java
 import miroshka.aether.api.AetherAPI;
 
-public class MyPlugin extends Plugin {
+AetherAPI.getInstance().ifPresent(api -> {
+    int globalOnline = api.getGlobalOnline();
+    int serverCount = api.getServerCount();
     
-    @Override
-    public void onEnable() {
-        AetherAPI.getInstance().ifPresent(api -> {
-            int globalOnline = api.getGlobalOnline();
-            getPluginLogger().info("Global online: " + globalOnline);
-        });
-    }
-}
+    int lobbyOnline = api.getServerOnline("lobby");
+    double lobbyTps = api.getServerTps("lobby");
+});
 ```
 
-### Checking Connection Status
+### AetherAPI Methods
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `getGlobalOnline()` | `int` | Total players on network |
+| `getServerCount()` | `int` | Number of servers |
+| `getServerNames()` | `List<String>` | Server names list |
+| `getServerOnline(name)` | `int` | Players on server |
+| `getServerMaxPlayers(name)` | `int` | Max players |
+| `getServerTps(name)` | `double` | Server TPS |
+| `isServerOnline(name)` | `boolean` | Is server online |
+| `getLatencyMillis()` | `int` | Ping to Master |
+
+---
+
+## Event Bridge
+
+Cross-server event broadcasting with LuckPerms group support.
+
+### Publishing Events
 
 ```java
-AetherAPI.getInstance().ifPresent(api -> {
-    ConnectionStatus status = api.getConnectionStatus();
+api.getEventBridge().ifPresent(bridge -> {
+    bridge.publish("PlayerAchievement", Map.of(
+        "achievement", "First Kill",
+        "player", player.getName()
+    ));
     
-    if (status.isConnected()) {
-        getPluginLogger().info("Connected to Aether network!");
-    } else {
-        getPluginLogger().warn("Not connected. State: " + status.state());
-    }
+    bridge.publish("VIPReward", 
+        player.getUniqueId(), 
+        player.getName(),
+        List.of("vip", "supporter"),
+        Map.of("reward", "Diamond Sword")
+    );
+});
+```
+
+### Subscribing to Events
+
+```java
+api.getEventBridge().ifPresent(bridge -> {
+    bridge.subscribe("PlayerAchievement", event -> {
+        broadcastMessage(event.playerName() + " achieved " + 
+            event.eventData().get("achievement"));
+    });
+    
+    bridge.subscribe("StaffAlert", 
+        EventFilter.requireGroups("admin", "moderator"), 
+        event -> { /* staff only */ }
+    );
 });
 ```
 
 ---
 
-## API Methods
+## Portal Manager
 
-### Global Network Data
-
-| Method | Return Type | Description |
-|--------|-------------|-------------|
-| `getGlobalOnline()` | `int` | Total players across all servers |
-| `getServerCount()` | `int` | Number of connected servers |
-| `getServerNames()` | `List<String>` | List of all server names |
-| `getConnectionStatus()` | `ConnectionStatus` | Current connection state |
-| `getLatencyMillis()` | `int` | Ping to Master in milliseconds |
-| `isStateStale()` | `boolean` | Whether cached state is outdated |
-| `getLastStateVersion()` | `long` | Current state version number |
-
-### Per-Server Data
-
-| Method | Parameters | Return Type | Description |
-|--------|------------|-------------|-------------|
-| `getServerOnline(name)` | `String` | `int` | Online players on specific server |
-| `getServerMaxPlayers(name)` | `String` | `int` | Max players on specific server |
-| `getServerTps(name)` | `String` | `double` | TPS of specific server |
-| `isServerOnline(name)` | `String` | `boolean` | Whether server is online |
-
-### Properties and Routing
-
-| Method | Parameters | Return Type | Description |
-|--------|------------|-------------|-------------|
-| `getGlobalProperty(key)` | `String` | `Optional<String>` | Get global property by key |
-| `getRoutingHint(gameType)` | `String` | `Optional<String>` | Get least loaded server for game type |
-| `sendCustomProperty(key, value)` | `String, String` | `void` | Send custom property to network |
-
----
-
-## Events
-
-Subscribe to network events to react to state changes:
+Seamless cross-server transfers.
 
 ```java
-AetherAPI.getInstance().ifPresent(api -> {
-    // Network state updates
-    api.subscribe(NetworkStateChangedEvent.class, event -> {
-        getPluginLogger().info("Network updated! Global online: " + event.globalOnline());
-    });
+api.getPortalManager().ifPresent(portals -> {
+    // Seamless transfer (pre-loads chunks)
+    portals.transferPlayer(player.getUniqueId(), "survival", true);
     
-    // Connection state changes
-    api.subscribe(ConnectionStateChangedEvent.class, event -> {
-        getPluginLogger().info("Connection: " + event.previousState() + " -> " + event.newState());
-    });
-    
-    // Circuit breaker events (connection issues)
-    api.subscribe(CircuitBreakerEvent.class, event -> {
-        if (event.isOpen()) {
-            getPluginLogger().warn("Connection unstable, circuit breaker opened");
-        }
-    });
+    // Transfer to coordinates
+    portals.transferPlayer(player.getUniqueId(), "survival", 100.5, 64.0, -200.5);
 });
 ```
 
-### Available Events
+---
 
-| Event | Description |
-|-------|-------------|
-| `NetworkStateChangedEvent` | Fired when network state is updated from Master |
-| `ConnectionStateChangedEvent` | Fired when connection state changes (connecting, connected, disconnected) |
-| `CircuitBreakerEvent` | Fired when circuit breaker opens/closes due to connection issues |
+## Load Balancer
+
+Smart load balancing with VIP priority.
+
+```java
+api.getLoadBalancer().ifPresent(balancer -> {
+    balancer.selectServer(player.getUniqueId(), 
+            List.of("lobby-1", "lobby-2", "lobby-3"))
+        .ifPresent(server -> player.connect(server));
+    
+    // With specific strategy
+    balancer.selectServer(player.getUniqueId(), 
+            List.of("survival-1", "survival-2"),
+            BalancingStrategy.LEAST_TPS_LOAD);
+});
+```
+
+### Strategies
+
+| Strategy | Description |
+|----------|-------------|
+| `ROUND_ROBIN` | Sequential rotation |
+| `LEAST_CONNECTIONS` | Fewest players |
+| `LEAST_TPS_LOAD` | Best TPS |
+| `RANDOM` | Random selection |
+| `PRIORITY_QUEUE` | VIP first (LuckPerms) |
 
 ---
 
-## PlaceholderAPI Integration
+## Distributed PDC
 
-If PlaceholderAPI is installed, Aether automatically registers placeholders.
+PersistentDataContainer sync across network.
 
-### Global Placeholders
+```java
+api.getDistributedPDC().ifPresent(pdc -> {
+    UUID playerId = player.getUniqueId();
+    
+    pdc.set(playerId, "coins", 1500);
+    int coins = pdc.get(playerId, "coins", Integer.class).orElse(0);
+    pdc.remove(playerId, "temp_data");
+});
+```
+
+---
+
+## LuckPerms Integration
+
+```java
+api.getLuckPerms().ifPresent(lp -> {
+    lp.getPlayerGroups(player.getUniqueId())
+        .thenAccept(groups -> logger.info("Groups: " + groups));
+    
+    lp.isInGroup(player.getUniqueId(), "vip")
+        .thenAccept(isVip -> { /* ... */ });
+    
+    lp.hasPermission(player.getUniqueId(), "aether.admin")
+        .thenAccept(hasPerm -> { /* ... */ });
+});
+```
+
+---
+
+## PlaceholderAPI
+
+### Global
 
 | Placeholder | Description |
-|------------|-------------|
-| `%aether_global_online%` | Total players on all servers |
-| `%aether_server_count%` | Number of connected servers |
-| `%aether_servers%` | Comma-separated list of servers |
-| `%aether_connection_status%` | Connection status (connected/disconnected/connecting) |
-| `%aether_connected%` | true/false - whether connected to Master |
-| `%aether_latency%` | Ping to Master (number only) |
-| `%aether_latency_formatted%` | Ping with "ms" suffix |
-| `%aether_state_version%` | Current state version |
-| `%aether_state_stale%` | true/false - whether state is outdated |
+|-------------|-------------|
+| `%aether_global_online%` | Total players |
+| `%aether_server_count%` | Server count |
+| `%aether_latency%` | Ping to Master |
 
-### Server-Specific Placeholders (with parameter)
+### Per Server
 
 | Placeholder | Description |
-|------------|-------------|
-| `%aether_server_online_<server>%` | Online players on `<server>` |
-| `%aether_server_max_<server>%` | Max players on `<server>` |
-| `%aether_server_tps_<server>%` | TPS of `<server>` |
-| `%aether_server_status_<server>%` | online/offline status |
-| `%aether_server_load_<server>%` | Load percentage (online/max %) |
-
-### Auto-Generated Placeholders
-
-For each connected server, placeholders are automatically created:
-
-- `%aether_lobby_online%`, `%aether_lobby_max%`, `%aether_lobby_tps%`, `%aether_lobby_status%`
-- `%aether_rpg_online%`, `%aether_rpg_max%`, `%aether_rpg_tps%`, `%aether_rpg_status%`
-- etc.
+|-------------|-------------|
+| `%aether_<server>_online%` | Players on server |
+| `%aether_<server>_tps%` | Server TPS |
+| `%aether_<server>_status%` | online/offline |
 
 ---
 
 ## Examples
 
-### Display Server Selector
+### Auto-Join Best Server
 
 ```java
-public void showServerSelector(Player player) {
-    AetherAPI.getInstance().ifPresent(api -> {
-        StringBuilder message = new StringBuilder("§6Available Servers:\n");
-        
-        for (String serverName : api.getServerNames()) {
-            int online = api.getServerOnline(serverName);
-            int max = api.getServerMaxPlayers(serverName);
-            String status = api.isServerOnline(serverName) ? "§a●" : "§c●";
-            
-            message.append(String.format("%s §f%s §7(%d/%d)\n", 
-                status, serverName, online, max));
-        }
-        
-        player.sendMessage(message.toString());
-    });
+@EventHandler
+public void onJoin(PlayerJoinEvent event) {
+    AetherAPI.getInstance().flatMap(AetherAPI::getLoadBalancer)
+        .ifPresent(balancer -> {
+            balancer.selectServer(event.getPlayer().getUniqueId(), 
+                    List.of("lobby-1", "lobby-2"))
+                .ifPresent(server -> event.getPlayer().connect(server));
+        });
 }
 ```
 
-### Smart Server Routing
+### Cross-Server Chat
 
 ```java
-public String findBestServer(String gameType) {
-    return AetherAPI.getInstance()
-        .flatMap(api -> api.getRoutingHint(gameType))
-        .orElse("lobby");
-}
-```
+// Sender
+bridge.publish("GlobalChat", Map.of(
+    "player", player.getName(),
+    "message", message,
+    "server", serverName
+));
 
-### Connection Status Display
-
-```java
-public String getNetworkStatus() {
-    return AetherAPI.getInstance().map(api -> {
-        ConnectionStatus status = api.getConnectionStatus();
-        return String.format("Status: %s | Servers: %d | Players: %d | Ping: %dms",
-            status.state().name(),
-            api.getServerCount(),
-            api.getGlobalOnline(),
-            api.getLatencyMillis());
-    }).orElse("Aether not available");
-}
-```
-
-### React to Player Changes
-
-```java
-AetherAPI.getInstance().ifPresent(api -> {
-    api.subscribe(NetworkStateChangedEvent.class, event -> {
-        // Update scoreboard, tab list, or other UI elements
-        updateGlobalPlayerCount(event.globalOnline());
-        
-        // Check for specific server changes
-        for (String server : api.getServerNames()) {
-            updateServerStatus(server, api.isServerOnline(server));
-        }
-    });
+// Receiver
+bridge.subscribe("GlobalChat", event -> {
+    String msg = String.format("[%s] %s: %s",
+        event.eventData().get("server"),
+        event.eventData().get("player"),
+        event.eventData().get("message"));
+    broadcastMessage(msg);
 });
 ```
-
----
-
-## Error Handling
-
-Always check if the API is available and handle connection issues:
-
-```java
-public int getGlobalOnlineSafe() {
-    return AetherAPI.getInstance()
-        .filter(api -> !api.isStateStale())
-        .map(AetherAPI::getGlobalOnline)
-        .orElse(0);
-}
-```
-
----
-
-## Best Practices
-
-1. **Cache the API instance** if calling frequently
-2. **Check `isStateStale()`** before displaying critical data
-3. **Subscribe to events** instead of polling for updates
-4. **Handle disconnection** gracefully in your UI
-5. **Use PlaceholderAPI** for simple text replacements

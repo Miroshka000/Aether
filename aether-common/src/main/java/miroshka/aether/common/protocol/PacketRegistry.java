@@ -36,6 +36,11 @@ public final class PacketRegistry {
         register(PacketIds.CIRCUIT_BREAKER_TRIPPED, CircuitBreakerTrippedPacket.class,
                 CircuitBreakerTrippedPacket::decode);
         register(PacketIds.PROTOCOL_ERROR, ProtocolErrorPacket.class, ProtocolErrorPacket::decode);
+        register(PacketIds.TRANSFER_REQUEST, TransferRequestPacket.class, TransferRequestPacket::decode);
+        register(PacketIds.PORTAL_SYNC, PortalSyncPacket.class, PortalSyncPacket::decode);
+        register(PacketIds.EVENT_BROADCAST, EventBroadcastPacket.class, EventBroadcastPacket::decode);
+        register(PacketIds.PDC_SYNC, PDCSyncPacket.class, PDCSyncPacket::decode);
+        register(PacketIds.CHUNK_DATA, ChunkDataPacket.class, ChunkDataPacket::decode);
     }
 
     private <T extends Packet> void register(int packetId, Class<T> packetClass, Function<ByteBuf, T> decoder) {

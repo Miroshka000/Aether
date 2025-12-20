@@ -4,6 +4,10 @@ plugins {
     id("com.gradleup.shadow") version "9.0.0-beta4"
 }
 
+repositories {
+    mavenCentral()
+}
+
 allay {
     api = "0.18.0"
     apiOnly = true
@@ -24,6 +28,7 @@ dependencies {
     implementation(libs.bundles.metrics)
     
     compileOnly(group = "org.allaymc", name = "papi", version = "0.1.1")
+    compileOnly("net.luckperms:api:5.4")
 }
 
 tasks.shadowJar {

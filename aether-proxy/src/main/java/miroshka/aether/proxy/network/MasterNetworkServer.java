@@ -7,14 +7,18 @@ import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
+import lombok.Getter;
 import miroshka.aether.proxy.NodeRegistry;
 import miroshka.aether.proxy.config.ProxyConfig;
+import miroshka.aether.proxy.event.EventRouter;
 import miroshka.aether.proxy.security.SecretKeyValidator;
+import miroshka.aether.proxy.transfer.SeamlessTransferHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
 
+@Getter
 public final class MasterNetworkServer {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MasterNetworkServer.class);
@@ -23,16 +27,28 @@ public final class MasterNetworkServer {
     private final NodeRegistry nodeRegistry;
     private final SecretKeyValidator secretKeyValidator;
     private final StateBroadcaster stateBroadcaster;
+    private final EventRouter eventRouter;
+    private final SeamlessTransferHandler transferHandler;
 
     private EventLoopGroup bossGroup;
     private EventLoopGroup workerGroup;
     private ChannelFuture serverChannel;
 
     public MasterNetworkServer(ProxyConfig config, NodeRegistry nodeRegistry) {
+        this(config, nodeRegistry, null, null);
+    }
+
+    public MasterNetworkServer(
+            ProxyConfig config,
+            NodeRegistry nodeRegistry,
+            EventRouter eventRouter,
+            SeamlessTransferHandler transferHandler) {
         this.config = Objects.requireNonNull(config, "config");
         this.nodeRegistry = Objects.requireNonNull(nodeRegistry, "nodeRegistry");
         this.secretKeyValidator = new SecretKeyValidator(config.secretKeys());
         this.stateBroadcaster = new StateBroadcaster(nodeRegistry, config.broadcastIntervalMillis());
+        this.eventRouter = eventRouter;
+        this.transferHandler = transferHandler;
     }
 
     public void start() throws InterruptedException {
@@ -52,12 +68,14 @@ public final class MasterNetworkServer {
                             nodeRegistry,
                             config,
                             secretKeyValidator,
-                            stateBroadcaster));
+                            stateBroadcaster,
+                            eventRouter,
+                            transferHandler));
 
-            serverChannel = bootstrap.bind(config.port()).sync();
+            serverChannel = bootstrap.bind(config.network().port()).sync();
             stateBroadcaster.start();
 
-            LOGGER.info("Aether Master started on port {}", config.port());
+            LOGGER.info("Aether Master started on port {}", config.network().port());
         } catch (Exception e) {
             LOGGER.error("Failed to start Aether Master", e);
             shutdown();

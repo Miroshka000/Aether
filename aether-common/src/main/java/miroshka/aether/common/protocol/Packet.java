@@ -11,7 +11,12 @@ public sealed interface Packet permits
         NetworkStatePacket,
         MetricsReportPacket,
         CircuitBreakerTrippedPacket,
-        ProtocolErrorPacket {
+        ProtocolErrorPacket,
+        TransferRequestPacket,
+        PortalSyncPacket,
+        EventBroadcastPacket,
+        PDCSyncPacket,
+        ChunkDataPacket {
 
     int packetId();
 

@@ -22,6 +22,7 @@
 
 ## ✨ Features
 
+### Core
 - **Ultra-Low Latency**: < 2ms network latency with TCP_NODELAY and Netty optimizations
 - **Binary Protocol**: Custom framing with VarInt encoding and Snappy compression
 - **Star Topology**: Proxy acts as Master, orchestrating network state across all Nodes
@@ -29,9 +30,15 @@
 - **Circuit Breaker**: Smart backpressure handling to prevent cascade failures
 - **Heartbeat System**: Connection liveness detection with RTT metrics
 - **Secure Auth**: SHA-256 key hashing with constant-time comparison
-- **Rate Limiting**: Token bucket algorithm to prevent packet flooding
-- **PlaceholderAPI**: Full integration with AllayMC PlaceholderAPI for easy data display
-- **Public API**: Clean API for third-party plugin integration
+
+### Advanced Modules (v1.1+)
+- **🌀 Seamless World Streaming**: Cross-server portals with pre-loaded chunks
+- **📡 Event Broadcasting**: Cross-server events with LuckPerms group filtering
+- **💾 Distributed PDC**: PersistentDataContainer sync across network
+- **⚖️ Smart Load Balancer**: Multiple strategies (Round Robin, Least Connections, etc.)
+- **🔧 Packet Rewrite Pipeline**: Entity filtering, resource pack overrides
+- **🌐 Web Admin Panel**: REST API + WebSocket for real-time monitoring
+- **🔌 Addons System**: Extensible addon architecture (coming soon)
 
 ## 🏗️ Architecture
 
@@ -44,28 +51,25 @@
 │                 │                            │    (NODE 2)     │
 │  Port: 3000     │         TCP/Binary         ├─────────────────┤
 │                 │◄─────────────────────────►│    AllayMC      │
-│                 │                            │    (NODE N)     │
+│  Web: 8080      │                            │    (NODE N)     │
 └─────────────────┘                            └─────────────────┘
 ```
 
 ## 📡 Protocol
 
-| Packet | ID | Direction | Priority | Description |
-|--------|-------|-----------|----------|-------------|
-| `AuthHandshake` | 0x01 | Node→Master | CRITICAL | Initial authentication |
-| `AuthResult` | 0x02 | Master→Node | CRITICAL | Auth response |
-| `Heartbeat` | 0x10 | Bidirectional | NORMAL | Connection liveness |
-| `HeartbeatAck` | 0x11 | Bidirectional | NORMAL | RTT measurement |
-| `NodeSnapshot` | 0x20 | Node→Master | NORMAL | Server state report |
-| `NetworkState` | 0x21 | Master→Nodes | NORMAL | Cluster state broadcast |
-| `MetricsReport` | 0x30 | Node→Master | LOW | Historical metrics |
-| `CircuitBreaker` | 0x40 | Master→Nodes | CRITICAL | Backpressure signal |
-| `ProtocolError` | 0xFF | Bidirectional | CRITICAL | Error notification |
-
-**Frame Format:**
-```
-[4 bytes: Length] [1 byte: Flags] [4 bytes: PacketID] [N bytes: Payload]
-```
+| Packet | ID | Direction | Description |
+|--------|-------|-----------|-------------|
+| `AuthHandshake` | 0x01 | Node→Master | Initial authentication |
+| `AuthResult` | 0x02 | Master→Node | Auth response |
+| `Heartbeat` | 0x10 | Bidirectional | Connection liveness |
+| `HeartbeatAck` | 0x11 | Bidirectional | RTT measurement |
+| `NodeSnapshot` | 0x20 | Node→Master | Server state report |
+| `NetworkState` | 0x21 | Master→Nodes | Cluster state broadcast |
+| `TransferRequest` | 0x30 | Bidirectional | Player transfer |
+| `PortalSync` | 0x31 | Node↔Master | Portal configuration |
+| `EventBroadcast` | 0x32 | Bidirectional | Cross-server events |
+| `PDCSync` | 0x33 | Bidirectional | PDC synchronization |
+| `ChunkData` | 0x34 | Node↔Node | Chunk streaming |
 
 ## 🔌 Modules
 
@@ -75,8 +79,27 @@
 | `aether-api` | Public API for third-party plugins |
 | `aether-proxy` | WaterdogPE plugin (Master role) |
 | `aether-server` | AllayMC plugin (Node role) |
+| `aether-web` | Web Admin Panel (Javalin + React) |
+| `aether-addons` | Addon system foundation |
 
 ## 📦 Installation
+
+### Maven/Gradle (API Only)
+
+```xml
+<!-- Maven -->
+<dependency>
+    <groupId>io.github.miroshka000</groupId>
+    <artifactId>aether-api</artifactId>
+    <version>1.0.0</version>
+    <scope>provided</scope>
+</dependency>
+```
+
+```kotlin
+// Gradle
+compileOnly("io.github.miroshka000:aether-api:1.0.0")
+```
 
 ### Download
 
@@ -94,22 +117,9 @@ Get the latest release from [GitHub Releases](https://github.com/Miroshka000/Aet
 3. Restart the server
 4. Configure `plugins/aether-server/config.yml`
 
-### Docker Setup
+## 🎮 API Usage
 
-For Docker environments, use service names instead of `localhost`:
-
-```yaml
-# Server config (aether-server)
-master:
-  host: "proxy"  # Docker service name
-  port: 3000
-```
-
-## 🎮 API & PlaceholderAPI
-
-📖 **Full API documentation**: [docs/API.md](docs/API.md)
-
-### Quick Start
+### Basic API
 
 ```java
 import miroshka.aether.api.AetherAPI;
@@ -124,54 +134,44 @@ AetherAPI.getInstance().ifPresent(api -> {
 });
 ```
 
-### PlaceholderAPI Placeholders
+### Event Broadcasting
 
-| Placeholder | Description |
-|------------|-------------|
-| `%aether_global_online%` | Total players on network |
-| `%aether_server_count%` | Connected servers count |
-| `%aether_<server>_online%` | Players on specific server |
-| `%aether_<server>_tps%` | TPS of specific server |
-| `%aether_latency%` | Ping to Master |
-
-[View all placeholders →](docs/API.md#placeholderapi-integration)
-
-## ⚙️ Configuration
-
-### Proxy (Master)
-
-```yaml
-network:
-  port: 3000
-  metrics-port: 9090
-  broadcast-interval-ms: 500
-  heartbeat-timeout-ms: 15000
-  compression-enabled: true
-
-security:
-  secret-keys:
-    - "your-secret-key-here"
-  allowed-ips: []
-
-limits:
-  max-nodes: 100
+```java
+api.getEventBridge().ifPresent(bridge -> {
+    bridge.publish("PlayerAchievement", playerUuid, playerName, 
+        List.of("vip", "survivor"), 
+        Map.of("achievement", "First Kill"));
+    
+    bridge.subscribe("CustomEvent", event -> {
+        System.out.println("Received: " + event.eventType());
+    });
+});
 ```
 
-### Server (Node)
+### Portal Management
 
-```yaml
-master:
-  host: "localhost"
-  port: 3000
-
-server:
-  name: "lobby"
-  secret-key: "your-secret-key-here"
-
-network:
-  heartbeat-interval-ms: 5000
-  snapshot-interval-ms: 200
+```java
+api.getPortalManager().ifPresent(portals -> {
+    portals.transferPlayer(playerUuid, "survival", true); // seamless
+});
 ```
+
+### Load Balancing
+
+```java
+api.getLoadBalancer().ifPresent(balancer -> {
+    balancer.selectServer(playerUuid, List.of("lobby-1", "lobby-2"))
+        .ifPresent(server -> player.connect(server));
+});
+```
+
+## ⚙️ Configuration Files
+
+See detailed configuration in:
+- `portals.yml` - Portal definitions
+- `events.yml` - Event subscriptions
+- `load-balancer.yml` - Balancing strategies
+- `packet-rewrite.yml` - Packet transformers
 
 ## 🔧 Build from Source
 
@@ -180,9 +180,8 @@ git clone https://github.com/Miroshka000/Aether.git
 cd Aether
 ./gradlew build
 
-# Artifacts:
-# - aether-proxy/build/libs/aether-proxy-*.jar
-# - aether-server/build/libs/aether-server-*.jar
+# Run tests
+./gradlew test
 ```
 
 ## 🔗 Requirements
@@ -190,25 +189,7 @@ cd Aether
 - **Java 21+**
 - **WaterdogPE 2.0+** (for proxy plugin)
 - **AllayMC 0.18+** (for server plugin)
-- **PlaceholderAPI** (optional, for placeholder support)
-
-## 📊 Metrics
-
-Prometheus metrics exposed on configured port (default: 9090):
-
-- `aether_nodes_connected` — Connected nodes count
-- `aether_global_players` — Total online players
-- `aether_packet_latency` — Packet round-trip time
-- `aether_packets_sent_total` — Total packets sent
-- `aether_packets_received_total` — Total packets received
-
-## 🛡️ Security
-
-- SHA-256 key hashing
-- Constant-time key comparison
-- IP allowlist support
-- Rate limiting per connection
-- Clock skew detection
+- **LuckPerms** (optional, for permission-based filtering)
 
 ## 📄 License
 

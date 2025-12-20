@@ -1,0 +1,109 @@
+# =============================================================================
+# Aether Event Bridge Configuration / Конфигурация Event Bridge Aether
+# =============================================================================
+#
+# This file configures cross-server event broadcasting with optional
+# LuckPerms permission/group filtering. Events can be sent to specific
+# servers or broadcast to all connected nodes.
+#
+# Этот файл настраивает кросс-серверную рассылку событий с опциональной
+# LuckPerms фильтрацией по разрешениям/группам. События могут отправляться
+# на конкретные серверы или транслироваться на все подключённые ноды.
+# =============================================================================
+
+events:
+  # Enable/disable event bridge globally
+  # Включить/выключить Event Bridge глобально
+  enabled: true
+
+  # LuckPerms integration for permission-based filtering
+  # Интеграция LuckPerms для фильтрации по разрешениям
+  luckperms:
+    # Enable LuckPerms group filtering
+    # Включить фильтрацию по группам LuckPerms
+    enabled: true
+
+    # Cache player groups for performance (seconds)
+    # Кэширование групп игроков для производительности (секунды)
+    cache-ttl: 60
+
+  # Event type definitions and routing rules
+  # Определения типов событий и правила маршрутизации
+  routing:
+
+    # Chat events - broadcast to all servers
+    # События чата - транслируются на все серверы
+    PlayerChat:
+      # Routing mode: ALL, SPECIFIC, FILTERED
+      # Режим маршрутизации: ALL (все), SPECIFIC (конкретные), FILTERED (с фильтром)
+      mode: ALL
+
+      # Include source server in broadcast (false = don't echo back)
+      # Включать исходный сервер в рассылку (false = не возвращать)
+      include-source: false
+
+    # Achievement events - broadcast with formatting
+    # События достижений - транслируются с форматированием
+    PlayerAchievement:
+      mode: ALL
+      include-source: true
+
+      # Custom message format
+      # Формат сообщения
+      format: "&6[{server}] &e{player} &7achieved &a{achievement}!"
+
+    # Staff notifications - only to specific groups
+    # Уведомления для стаффа - только для определённых групп
+    StaffAlert:
+      mode: FILTERED
+      include-source: true
+
+      # Required LuckPerms groups to receive this event
+      # Требуемые группы LuckPerms для получения события
+      required-groups:
+        - admin
+        - moderator
+
+      # Alternative: required permissions (any of these)
+      # Альтернатива: требуемые разрешения (любое из этих)
+      # required-permissions:
+      #   - aether.staff.alerts
+      #   - aether.admin
+
+    # Private server events - only to specific servers
+    # Приватные события серверов - только для конкретных серверов
+    MinigameStart:
+      mode: SPECIFIC
+
+      # Target servers for this event
+      # Целевые серверы для этого события
+      target-servers:
+        - lobby
+        - hub
+
+    # VIP-only events
+    # События только для VIP
+    VIPReward:
+      mode: FILTERED
+      required-groups:
+        - vip
+        - vip_plus
+        - mvp
+
+  # Default message formats for common events
+  # Форматы сообщений по умолчанию для стандартных событий
+  formats:
+    join: "&8[&a+&8] &7{player} &8joined &e{server}"
+    quit: "&8[&c-&8] &7{player} &8left &e{server}"
+    switch: "&8[&b→&8] &7{player} &8switched to &e{server}"
+
+  # Rate limiting to prevent event spam
+  # Ограничение частоты для предотвращения спама событиями
+  rate-limit:
+    # Max events per second per player
+    # Макс. событий в секунду на игрока
+    max-per-second: 5
+
+    # Burst allowance
+    # Разрешённый всплеск
+    burst: 10

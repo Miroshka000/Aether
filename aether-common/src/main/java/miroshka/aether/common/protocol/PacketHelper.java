@@ -136,4 +136,18 @@ public final class PacketHelper {
         Objects.requireNonNull(buffer, "buffer");
         return buffer.readBoolean();
     }
+
+    public static void writeUUID(ByteBuf buffer, java.util.UUID uuid) {
+        Objects.requireNonNull(buffer, "buffer");
+        Objects.requireNonNull(uuid, "uuid");
+        buffer.writeLong(uuid.getMostSignificantBits());
+        buffer.writeLong(uuid.getLeastSignificantBits());
+    }
+
+    public static java.util.UUID readUUID(ByteBuf buffer) {
+        Objects.requireNonNull(buffer, "buffer");
+        long mostSig = buffer.readLong();
+        long leastSig = buffer.readLong();
+        return new java.util.UUID(mostSig, leastSig);
+    }
 }

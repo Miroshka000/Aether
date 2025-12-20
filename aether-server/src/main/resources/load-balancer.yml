@@ -1,0 +1,130 @@
+# =============================================================================
+# Aether Load Balancer Configuration / Конфигурация Load Balancer Aether
+# =============================================================================
+#
+# This file configures how players are distributed across servers.
+# Multiple strategies available, with optional VIP priority queues
+# via LuckPerms integration.
+#
+# Этот файл настраивает распределение игроков по серверам.
+# Доступно несколько стратегий, с опциональными приоритетными очередями
+# для VIP через интеграцию с LuckPerms.
+# =============================================================================
+
+load-balancer:
+  # Enable/disable load balancer
+  # Включить/выключить балансировщик
+  enabled: true
+
+  # Default balancing strategy
+  # Стратегия балансировки по умолчанию
+  #
+  # Available strategies / Доступные стратегии:
+  #   - ROUND_ROBIN: Rotates through servers sequentially
+  #                  Последовательно перебирает серверы
+  #   - LEAST_CONNECTIONS: Sends to server with fewest players
+  #                        Отправляет на сервер с наименьшим числом игроков
+  #   - LEAST_TPS_LOAD: Sends to server with highest TPS
+  #                     Отправляет на сервер с наивысшим TPS
+  #   - RANDOM: Random server selection
+  #             Случайный выбор сервера
+  #   - PRIORITY_QUEUE: Uses player priority (VIP first)
+  #                     Использует приоритет игрока (VIP первые)
+  default-strategy: LEAST_CONNECTIONS
+
+  # Server groups for balancing
+  # Группы серверов для балансировки
+  #
+  # Each group defines a pool of servers that can receive players
+  # Каждая группа определяет пул серверов для приёма игроков
+  groups:
+    # Lobby servers pool
+    # Пул серверов лобби
+    lobby:
+      # Servers in this group
+      # Серверы в этой группе
+      servers:
+        - lobby-1
+        - lobby-2
+        - lobby-3
+
+      # Strategy for this specific group (overrides default)
+      # Стратегия для этой группы (переопределяет default)
+      strategy: LEAST_CONNECTIONS
+
+    # Survival servers pool
+    # Пул серверов survival
+    survival:
+      servers:
+        - survival-1
+        - survival-2
+      strategy: LEAST_TPS_LOAD
+
+    # Minigames servers pool with fallback
+    # Пул серверов minigames с fallback
+    minigames:
+      servers:
+        - games-1
+        - games-2
+        - games-3
+      strategy: ROUND_ROBIN
+
+      # Fallback group if all servers are full
+      # Резервная группа если все серверы заполнены
+      fallback: lobby
+
+  # VIP priority queue settings (requires LuckPerms)
+  # Настройки приоритетной очереди VIP (требует LuckPerms)
+  priority:
+    # Enable VIP priority
+    # Включить приоритет VIP
+    enabled: true
+
+    # Priority levels by LuckPerms group (higher = better priority)
+    # Уровни приоритета по группам LuckPerms (выше = лучший приоритет)
+    groups:
+      # Default priority for players without special groups
+      # Приоритет по умолчанию для игроков без особых групп
+      default: 0
+
+      # VIP tiers
+      # Уровни VIP
+      vip: 10
+      vip_plus: 20
+      mvp: 30
+      mvp_plus: 40
+
+      # Staff (highest priority)
+      # Стафф (наивысший приоритет)
+      moderator: 100
+      admin: 100
+
+    # Reserve slots for high-priority players
+    # Резервировать слоты для приоритетных игроков
+    reserved-slots:
+      # Enable reserved slots
+      # Включить резервные слоты
+      enabled: true
+
+      # Number of slots to reserve per server
+      # Количество резервных слотов на сервер
+      count: 5
+
+      # Minimum priority to use reserved slots
+      # Минимальный приоритет для использования резервных слотов
+      min-priority: 10
+
+  # Health check settings
+  # Настройки проверки здоровья серверов
+  health:
+    # Minimum TPS to consider server healthy
+    # Минимальный TPS для признания сервера здоровым
+    min-tps: 15.0
+
+    # Maximum player percentage to consider server available
+    # Макс. процент заполненности для признания сервера доступным
+    max-fill-percent: 95
+
+    # Consider server offline after this many seconds without heartbeat
+    # Считать сервер оффлайн после этого количества секунд без heartbeat
+    timeout-seconds: 30

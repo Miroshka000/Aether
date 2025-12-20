@@ -1,5 +1,11 @@
 package miroshka.aether.api;
 
+import miroshka.aether.api.balancer.LoadBalancer;
+import miroshka.aether.api.chunk.ChunkStreaming;
+import miroshka.aether.api.event.AetherEventBridge;
+import miroshka.aether.api.pdc.DistributedPDC;
+import miroshka.aether.api.portal.PortalManager;
+
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
@@ -39,6 +45,16 @@ public interface AetherAPI {
     double getServerTps(String serverName);
 
     boolean isServerOnline(String serverName);
+
+    Optional<PortalManager> getPortalManager();
+
+    Optional<AetherEventBridge> getEventBridge();
+
+    Optional<DistributedPDC> getDistributedPDC();
+
+    Optional<LoadBalancer> getLoadBalancer();
+
+    Optional<ChunkStreaming> getChunkStreaming();
 
     static Optional<AetherAPI> getInstance() {
         return AetherAPIProvider.getInstance();

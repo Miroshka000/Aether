@@ -1,6 +1,11 @@
 package miroshka.aether.server;
 
 import miroshka.aether.api.*;
+import miroshka.aether.api.balancer.LoadBalancer;
+import miroshka.aether.api.chunk.ChunkStreaming;
+import miroshka.aether.api.event.AetherEventBridge;
+import miroshka.aether.api.pdc.DistributedPDC;
+import miroshka.aether.api.portal.PortalManager;
 import miroshka.aether.common.protocol.NetworkStatePacket;
 import miroshka.aether.common.protocol.ServerInfo;
 import miroshka.aether.server.network.NodeNetworkClient;
@@ -20,6 +25,12 @@ public final class AetherServerAPI implements AetherAPI {
     private final NetworkStateCache stateCache;
     private final SnapshotCollector snapshotCollector;
     private final Map<Class<? extends AetherPublicEvent>, List<Consumer<? extends AetherPublicEvent>>> eventHandlers;
+
+    private volatile PortalManager portalManager;
+    private volatile AetherEventBridge eventBridge;
+    private volatile DistributedPDC distributedPDC;
+    private volatile LoadBalancer loadBalancer;
+    private volatile ChunkStreaming chunkStreaming;
 
     public AetherServerAPI(
             NodeNetworkClient networkClient,
@@ -132,6 +143,51 @@ public final class AetherServerAPI implements AetherAPI {
         return stateCache.getServer(serverName)
                 .map(ServerInfo::isOnline)
                 .orElse(false);
+    }
+
+    @Override
+    public Optional<PortalManager> getPortalManager() {
+        return Optional.ofNullable(portalManager);
+    }
+
+    @Override
+    public Optional<AetherEventBridge> getEventBridge() {
+        return Optional.ofNullable(eventBridge);
+    }
+
+    @Override
+    public Optional<DistributedPDC> getDistributedPDC() {
+        return Optional.ofNullable(distributedPDC);
+    }
+
+    @Override
+    public Optional<LoadBalancer> getLoadBalancer() {
+        return Optional.ofNullable(loadBalancer);
+    }
+
+    @Override
+    public Optional<ChunkStreaming> getChunkStreaming() {
+        return Optional.ofNullable(chunkStreaming);
+    }
+
+    public void setPortalManager(PortalManager portalManager) {
+        this.portalManager = portalManager;
+    }
+
+    public void setEventBridge(AetherEventBridge eventBridge) {
+        this.eventBridge = eventBridge;
+    }
+
+    public void setDistributedPDC(DistributedPDC distributedPDC) {
+        this.distributedPDC = distributedPDC;
+    }
+
+    public void setLoadBalancer(LoadBalancer loadBalancer) {
+        this.loadBalancer = loadBalancer;
+    }
+
+    public void setChunkStreaming(ChunkStreaming chunkStreaming) {
+        this.chunkStreaming = chunkStreaming;
     }
 
     public void notifyStateChanged(NetworkStatePacket state) {

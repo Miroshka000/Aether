@@ -216,4 +216,18 @@ public final class NodeNetworkClient {
         NodePacketHandler h = handler.get();
         return h != null ? h.getLatencyMillis() : 0;
     }
+
+    public void sendPacket(miroshka.aether.common.protocol.Packet packet) {
+        NodePacketHandler h = handler.get();
+        if (h == null || !h.isAuthenticated()) {
+            return;
+        }
+
+        Channel ch = channel.get();
+        if (ch == null || !ch.isActive()) {
+            return;
+        }
+
+        ch.writeAndFlush(packet);
+    }
 }

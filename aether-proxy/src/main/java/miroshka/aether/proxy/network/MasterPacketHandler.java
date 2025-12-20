@@ -9,8 +9,10 @@ import miroshka.aether.common.protocol.*;
 import miroshka.aether.proxy.NodeRegistry;
 import miroshka.aether.proxy.NodeSession;
 import miroshka.aether.proxy.config.ProxyConfig;
+import miroshka.aether.proxy.event.EventRouter;
 import miroshka.aether.proxy.security.RateLimiter;
 import miroshka.aether.proxy.security.SecretKeyValidator;
+import miroshka.aether.proxy.transfer.SeamlessTransferHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,6 +27,8 @@ public final class MasterPacketHandler extends ChannelInboundHandlerAdapter {
     private final SecretKeyValidator secretKeyValidator;
     private final StateBroadcaster stateBroadcaster;
     private final RateLimiter rateLimiter;
+    private final EventRouter eventRouter;
+    private final SeamlessTransferHandler transferHandler;
 
     private volatile boolean authenticated;
     private volatile String nodeId;
@@ -33,11 +37,15 @@ public final class MasterPacketHandler extends ChannelInboundHandlerAdapter {
             NodeRegistry nodeRegistry,
             ProxyConfig config,
             SecretKeyValidator secretKeyValidator,
-            StateBroadcaster stateBroadcaster) {
+            StateBroadcaster stateBroadcaster,
+            EventRouter eventRouter,
+            SeamlessTransferHandler transferHandler) {
         this.nodeRegistry = Objects.requireNonNull(nodeRegistry, "nodeRegistry");
         this.secretKeyValidator = Objects.requireNonNull(secretKeyValidator, "secretKeyValidator");
         this.stateBroadcaster = Objects.requireNonNull(stateBroadcaster, "stateBroadcaster");
         this.rateLimiter = new RateLimiter(config.rateLimitBurstSize(), config.rateLimitPacketsPerSecond());
+        this.eventRouter = eventRouter;
+        this.transferHandler = transferHandler;
         this.authenticated = false;
     }
 
@@ -58,6 +66,8 @@ public final class MasterPacketHandler extends ChannelInboundHandlerAdapter {
             case NodeSnapshotPacket snapshot -> handleNodeSnapshot(snapshot);
             case MetricsReportPacket metrics -> handleMetricsReport(metrics);
             case ProtocolErrorPacket error -> handleProtocolError(ctx, error);
+            case TransferRequestPacket transfer -> handleTransferRequest(transfer);
+            case EventBroadcastPacket event -> handleEventBroadcast(event);
             default -> LOGGER.warn("Unexpected packet type: {}", packet.getClass().getSimpleName());
         }
     }
@@ -138,6 +148,27 @@ public final class MasterPacketHandler extends ChannelInboundHandlerAdapter {
         }
         LOGGER.debug("Metrics received from {}: {} TPS points, {} player points",
                 nodeId, metrics.tpsHistory().size(), metrics.playerHistory().size());
+    }
+
+    private void handleTransferRequest(TransferRequestPacket transfer) {
+        if (!authenticated) {
+            return;
+        }
+        if (transferHandler != null) {
+            transferHandler.handleTransferRequest(transfer);
+            LOGGER.debug("Transfer request from {}: player {} to {}",
+                    nodeId, transfer.playerName(), transfer.targetServer());
+        }
+    }
+
+    private void handleEventBroadcast(EventBroadcastPacket event) {
+        if (!authenticated) {
+            return;
+        }
+        if (eventRouter != null) {
+            eventRouter.routeEvent(event);
+            LOGGER.debug("Event broadcast from {}: type={}", nodeId, event.eventType());
+        }
     }
 
     private void handleProtocolError(ChannelHandlerContext ctx, ProtocolErrorPacket error) {

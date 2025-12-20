@@ -20,6 +20,16 @@ public final class PacketIds {
 
     public static final int PROTOCOL_ERROR = 0x21;
 
+    public static final int TRANSFER_REQUEST = 0x30;
+
+    public static final int PORTAL_SYNC = 0x31;
+
+    public static final int EVENT_BROADCAST = 0x40;
+
+    public static final int PDC_SYNC = 0x50;
+
+    public static final int CHUNK_DATA = 0x60;
+
     private PacketIds() {
     }
 }
