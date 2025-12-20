@@ -1,0 +1,99 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [ "master" ]
+    paths:
+      - .github/workflows/build.yml
+      - gradle/**
+      - build.gradle.kts
+      - settings.gradle.kts
+      - aether-*/src/**
+      - aether-*/build.gradle.kts
+  pull_request:
+    branches: [ "master" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      version: ${{ steps.get_version.outputs.VERSION }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'zulu'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: wrapper
+          cache-overwrite-existing: true
+          cache-read-only: false
+          build-scan-terms-of-use-url: "https://gradle.com/terms-of-service"
+          build-scan-terms-of-use-agree: "yes"
+
+      - name: Extract Version from Gradle
+        id: get_version
+        run: |
+          VERSION=$(grep 'version =' build.gradle.kts | head -1 | sed 's/.*version = "//' | sed 's/".*//')
+          echo "Detected version: $VERSION"
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Build
+        run: |
+          chmod +x gradlew
+          ./gradlew build
+
+      - name: Upload aether-server artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: aether-server-${{ steps.get_version.outputs.VERSION }}
+          path: aether-server/build/libs/aether-server-*.jar
+          if-no-files-found: error
+
+      - name: Upload aether-proxy artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: aether-proxy-${{ steps.get_version.outputs.VERSION }}
+          path: aether-proxy/build/libs/aether-proxy-*.jar
+          if-no-files-found: error
+
+  release:
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download aether-server artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: aether-server-${{ needs.build.outputs.version }}
+          path: artifacts
+
+      - name: Download aether-proxy artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: aether-proxy-${{ needs.build.outputs.version }}
+          path: artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ needs.build.outputs.version }}
+          name: "Aether v${{ needs.build.outputs.version }}"
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            artifacts/*.jar
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,6 @@
+name: AetherProxy
+version: 1.0.0
+author: Miroshka
+main: miroshka.aether.proxy.AetherProxyPlugin
+api-version: 2.0
+description: High-performance network bridge for Allay servers
