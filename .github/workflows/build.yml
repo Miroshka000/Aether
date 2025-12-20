@@ -92,7 +92,41 @@ jobs:
           name: "Aether v${{ needs.build.outputs.version }}"
           draft: false
           prerelease: false
-          generate_release_notes: true
+          body: |
+            ## 🚀 Aether v${{ needs.build.outputs.version }}
+            
+            Cross-server communication system for AllayMC and WaterdogPE networks.
+            
+            ### 📦 Installation
+            
+            | File | Description |
+            |------|-------------|
+            | `aether-server-${{ needs.build.outputs.version }}.jar` | **AllayMC Plugin** - Install on each game server |
+            | `aether-proxy-${{ needs.build.outputs.version }}.jar` | **WaterdogPE Plugin** - Install on proxy server |
+            
+            ### 🔧 Quick Setup
+            
+            1. Place `aether-proxy-*.jar` in your WaterdogPE `plugins/` folder
+            2. Place `aether-server-*.jar` in each AllayMC server `plugins/` folder
+            3. Configure `config.yml` on each server with matching `secret-key`
+            4. Restart all servers
+            
+            ### 📚 Documentation
+            
+            - [API Documentation](https://github.com/Miroshka000/Aether/blob/master/docs/API.md)
+            - [README (English)](https://github.com/Miroshka000/Aether/blob/master/README.md)
+            - [README (Русский)](https://github.com/Miroshka000/Aether/blob/master/README_RU.md)
+            
+            ### ✨ Features
+            
+            - Real-time player count synchronization
+            - PlaceholderAPI integration
+            - Low-latency TCP communication
+            - Automatic reconnection
+            
+            ---
+            
+            **Full Changelog**: https://github.com/Miroshka000/Aether/commits/v${{ needs.build.outputs.version }}
           files: |
             artifacts/*.jar
         env:
