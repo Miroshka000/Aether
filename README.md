@@ -31,7 +31,7 @@
 - **Heartbeat System**: Connection liveness detection with RTT metrics
 - **Secure Auth**: SHA-256 key hashing with constant-time comparison
 
-### Advanced Modules (v1.1+)
+### Advanced Modules (v1.0.1+)
 - **🌀 Seamless World Streaming**: Cross-server portals with pre-loaded chunks
 - **📡 Event Broadcasting**: Cross-server events with LuckPerms group filtering
 - **💾 Distributed PDC**: PersistentDataContainer sync across network
@@ -91,14 +91,14 @@
 <dependency>
     <groupId>io.github.miroshka000</groupId>
     <artifactId>aether-api</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
     <scope>provided</scope>
 </dependency>
 ```
 
 ```kotlin
 // Gradle
-compileOnly("io.github.miroshka000:aether-api:1.0.0")
+compileOnly("io.github.miroshka000:aether-api:1.0.1")
 ```
 
 ### Download
