@@ -10,7 +10,7 @@ const resources = {
                 management: 'Management',
                 servers: 'Servers',
                 players: 'Players',
-                portals: 'Portals',
+
                 events: 'Events',
                 configuration: 'Configuration',
                 loadBalancer: 'Load Balancer',
@@ -58,17 +58,7 @@ const resources = {
                 playtime: 'Playtime',
                 noPlayers: 'No players online'
             },
-            portals: {
-                title: 'Portals',
-                subtitle: 'Cross-server portal configuration',
-                addPortal: 'Add Portal',
-                from: 'From',
-                to: 'To',
-                type: 'Type',
-                active: 'Active',
-                disabled: 'Disabled',
-                noPortals: 'No portals configured'
-            },
+
             events: {
                 title: 'Events',
                 subtitle: 'Cross-server event broadcasting',
@@ -137,7 +127,7 @@ const resources = {
                 management: 'Управление',
                 servers: 'Серверы',
                 players: 'Игроки',
-                portals: 'Порталы',
+
                 events: 'События',
                 configuration: 'Конфигурация',
                 loadBalancer: 'Балансировщик',
@@ -185,17 +175,7 @@ const resources = {
                 playtime: 'Наиграно',
                 noPlayers: 'Нет игроков онлайн'
             },
-            portals: {
-                title: 'Порталы',
-                subtitle: 'Конфигурация кросс-серверных порталов',
-                addPortal: 'Добавить портал',
-                from: 'Откуда',
-                to: 'Куда',
-                type: 'Тип',
-                active: 'Активен',
-                disabled: 'Отключён',
-                noPortals: 'Порталы не настроены'
-            },
+
             events: {
                 title: 'События',
                 subtitle: 'Кросс-серверная рассылка событий',

@@ -249,7 +249,7 @@ function Sidebar({ onLogout }) {
             items: [
                 { path: '/servers', label: t('nav.servers'), icon: '🖥️' },
                 { path: '/players', label: t('nav.players'), icon: '👤' },
-                { path: '/portals', label: t('nav.portals'), icon: '🌀' },
+
                 { path: '/events', label: t('nav.events'), icon: '📡' },
                 { path: '/transport', label: 'Transport', icon: '🔗' }
             ]
@@ -406,39 +406,7 @@ function Dashboard() {
                 </div>
             </div>
 
-            <div className="section">
-                <div className="section-title">Online Stats</div>
-                <div className="online-stats-grid">
-                    <div className="online-stat-card">
-                        <div className="online-stat-icon" style={{ background: 'rgba(63, 185, 80, 0.15)', color: 'var(--accent-green)' }}>👥</div>
-                        <div className="online-stat-content">
-                            <div className="online-stat-label">Online now</div>
-                            <div className="online-stat-value" style={{ color: 'var(--accent-green)' }}>{d.globalOnline || 0}</div>
-                        </div>
-                    </div>
-                    <div className="online-stat-card">
-                        <div className="online-stat-icon" style={{ background: 'rgba(88, 166, 255, 0.15)', color: 'var(--accent-blue)' }}>📅</div>
-                        <div className="online-stat-content">
-                            <div className="online-stat-label">Online today</div>
-                            <div className="online-stat-value" style={{ color: 'var(--accent-blue)' }}>{Math.floor(Math.random() * 100) + d.globalOnline}</div>
-                        </div>
-                    </div>
-                    <div className="online-stat-card">
-                        <div className="online-stat-icon" style={{ background: 'rgba(63, 185, 207, 0.15)', color: 'var(--accent-cyan)' }}>📆</div>
-                        <div className="online-stat-content">
-                            <div className="online-stat-label">Online this week</div>
-                            <div className="online-stat-value" style={{ color: 'var(--accent-cyan)' }}>{Math.floor(Math.random() * 500) + d.globalOnline}</div>
-                        </div>
-                    </div>
-                    <div className="online-stat-card">
-                        <div className="online-stat-icon" style={{ background: 'rgba(210, 153, 34, 0.15)', color: 'var(--accent-yellow)' }}>🚫</div>
-                        <div className="online-stat-content">
-                            <div className="online-stat-label">Never online</div>
-                            <div className="online-stat-value" style={{ color: 'var(--accent-yellow)' }}>0</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+
 
             <div className="section servers-section">
                 <div className="section-title">{t('nav.servers')} ({servers.length})</div>
@@ -661,83 +629,7 @@ function Players() {
     )
 }
 
-function Portals() {
-    const { t } = useTranslation()
-    const [portals, setPortals] = useState([])
-    const [loading, setLoading] = useState(true)
 
-    const loadPortals = useCallback(async () => {
-        try {
-            const data = await api.get('/portals')
-            setPortals(data.portals || data || [])
-        } catch (err) { console.error(err) }
-        finally { setLoading(false) }
-    }, [])
-
-    useEffect(() => {
-        loadPortals()
-    }, [loadPortals])
-
-    if (loading) return <div className="main-content loading">{t('common.loading')}</div>
-
-    return (
-        <div className="main-content">
-            <div className="header">
-                <div className="header-left">
-                    <h2>{t('portals.title')}</h2>
-                    <p className="header-subtitle">{t('portals.subtitle')}</p>
-                </div>
-                <div className="header-right">
-                    <button className="btn btn-primary">+ {t('portals.addPortal')}</button>
-                </div>
-            </div>
-
-            <div className="section">
-                <div className="section-title">Portal Statistics</div>
-                <div className="stats-grid">
-                    <StatCard icon="🌀" iconColor="purple" title="Total Portals" value={portals.length} cardColor="purple" />
-                    <StatCard icon="✅" iconColor="green" title="Active" value={portals.filter(p => p.enabled !== false).length} cardColor="green" />
-                    <StatCard icon="🔄" iconColor="cyan" title="Seamless" value={portals.filter(p => p.seamless).length} cardColor="cyan" />
-                    <StatCard icon="📍" iconColor="blue" title="Region Based" value={portals.filter(p => p.type === 'REGION').length} cardColor="blue" />
-                </div>
-            </div>
-
-            {portals.length > 0 ? (
-                <div className="servers-grid">
-                    {portals.map((portal, i) => (
-                        <div key={portal.id || portal.name || i} className="server-card">
-                            <div className="server-header">
-                                <span className="server-name">🌀 {portal.name || `Portal ${i + 1}`}</span>
-                                <div className={`server-status ${portal.enabled !== false ? 'online' : 'offline'}`}>
-                                    {portal.enabled !== false ? t('portals.active') : t('portals.disabled')}
-                                </div>
-                            </div>
-                            <div className="server-stats">
-                                <div className="server-stat">
-                                    <div className="server-stat-value">{portal.sourceServer || '-'}</div>
-                                    <div className="server-stat-label">{t('portals.from')}</div>
-                                </div>
-                                <div className="server-stat">
-                                    <div className="server-stat-value">{portal.targetServer || '-'}</div>
-                                    <div className="server-stat-label">{t('portals.to')}</div>
-                                </div>
-                                <div className="server-stat">
-                                    <div className="server-stat-value">{portal.type || 'REGION'}</div>
-                                    <div className="server-stat-label">{t('portals.type')}</div>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            ) : (
-                <div className="page-placeholder">
-                    <div className="page-placeholder-icon">🌀</div>
-                    <p>{t('portals.noPortals')}</p>
-                </div>
-            )}
-        </div>
-    )
-}
 
 function Events() {
     const { t } = useTranslation()
@@ -1129,7 +1021,7 @@ export default function App() {
                     <Route path="/" element={<Dashboard />} />
                     <Route path="/servers" element={<Servers />} />
                     <Route path="/players" element={<Players />} />
-                    <Route path="/portals" element={<Portals />} />
+
                     <Route path="/events" element={<Events />} />
                     <Route path="/transport" element={<Transport />} />
                     <Route path="/load-balancer" element={<LoadBalancer />} />
