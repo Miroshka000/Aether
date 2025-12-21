@@ -38,6 +38,7 @@ public final class ProxyConfigLoader {
             Map<String, Object> security = (Map<String, Object>) data.getOrDefault("security", Map.of());
             Map<String, Object> limits = (Map<String, Object>) data.getOrDefault("limits", Map.of());
             Map<String, Object> rateLimit = (Map<String, Object>) data.getOrDefault("rate-limit", Map.of());
+            Map<String, Object> transport = (Map<String, Object>) data.getOrDefault("transport", Map.of());
 
             List<String> secretKeys = (List<String>) security.getOrDefault("secret-keys",
                     List.of("change-me-secret-key"));
@@ -51,6 +52,8 @@ public final class ProxyConfigLoader {
                     ((Number) network.getOrDefault("metrics-port", 9090)).intValue(),
                     ((Number) network.getOrDefault("web-port", 8080)).intValue());
 
+            TransportConfig transportConfig = parseTransportConfig(transport);
+
             return new ProxyConfig(
                     networkConfig,
                     secretKeys,
@@ -61,10 +64,24 @@ public final class ProxyConfigLoader {
                     ((Number) network.getOrDefault("heartbeat-timeout-ms", 15000)).intValue(),
                     ((Number) rateLimit.getOrDefault("packets-per-second", 100)).intValue(),
                     ((Number) rateLimit.getOrDefault("burst-size", 200)).intValue(),
-                    (Boolean) network.getOrDefault("compression-enabled", true));
+                    (Boolean) network.getOrDefault("compression-enabled", true),
+                    transportConfig);
         } catch (IOException e) {
             throw new RuntimeException("Failed to load config from " + configPath, e);
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static TransportConfig parseTransportConfig(Map<String, Object> transport) {
+        boolean enabled = (Boolean) transport.getOrDefault("enabled", false);
+        String protocolStr = ((String) transport.getOrDefault("protocol", "TCP")).toUpperCase();
+        String compressionStr = ((String) transport.getOrDefault("compression", "ZSTD")).toUpperCase();
+        List<String> servers = (List<String>) transport.getOrDefault("servers", List.of());
+
+        TransportConfig.Protocol protocol = TransportConfig.Protocol.valueOf(protocolStr);
+        TransportConfig.Compression compression = TransportConfig.Compression.valueOf(compressionStr);
+
+        return new TransportConfig(enabled, protocol, compression, servers);
     }
 
     private static void createDefaultConfig(Path configPath) {
@@ -193,6 +210,40 @@ public final class ProxyConfigLoader {
                   # Burst size - allows temporary spikes above the rate limit
                   # Burst size - разрешает временные всплески выше лимита
                   burst-size: 200
+
+                # ProxyTransport - optimized TCP/QUIC transport for downstream servers
+                # Replaces RakNet for internal proxy <-> server communication
+                # Reduces latency and CPU overhead in datacenter environments
+                # ---
+                # ProxyTransport - оптимизированный TCP/QUIC транспорт для downstream серверов
+                # Заменяет RakNet для связи прокси <-> сервер
+                # Уменьшает задержку и нагрузку на CPU в датацентрах
+                transport:
+                  # Enable ProxyTransport (requires servers to support TCP/QUIC)
+                  # Включить ProxyTransport (требует поддержки TCP/QUIC на серверах)
+                  enabled: false
+
+                  # Transport protocol: TCP or QUIC
+                  # TCP - reliable, low overhead, good for local network
+                  # QUIC - modern protocol with connection migration support
+                  # ---
+                  # Протокол: TCP или QUIC
+                  protocol: TCP
+
+                  # Compression algorithm: ZLIB, SNAPPY, or ZSTD
+                  # ZSTD - best compression ratio, recommended
+                  # SNAPPY - fastest, good for high traffic
+                  # ---
+                  # Алгоритм сжатия: ZLIB, SNAPPY, или ZSTD
+                  compression: ZSTD
+
+                  # List of servers that use ProxyTransport
+                  # These servers must be configured to accept TCP/QUIC connections
+                  # Leave empty to apply to all servers when enabled
+                  # ---
+                  # Список серверов с ProxyTransport
+                  # Оставьте пустым для применения ко всем серверам
+                  servers: []
                 """;
 
         try (Writer writer = Files.newBufferedWriter(configPath)) {

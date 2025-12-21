@@ -5,7 +5,6 @@ import io.javalin.http.staticfiles.Location;
 import io.javalin.websocket.WsContext;
 import miroshka.aether.web.controller.AuthController;
 import miroshka.aether.web.controller.DashboardController;
-import miroshka.aether.web.controller.PortalController;
 import miroshka.aether.web.security.JwtService;
 import miroshka.aether.web.ws.WebSocketHandler;
 
@@ -39,89 +38,9 @@ public final class WebServer {
         registerRoutes();
     }
 
-    public WebServer(int port, String jwtSecret, Object nodeRegistry) {
-        this(port, jwtSecret, createContextFromRegistry(nodeRegistry));
-    }
-
-    @SuppressWarnings("unchecked")
-    private static AetherWebContext createContextFromRegistry(Object registryObj) {
-        if (registryObj instanceof AetherWebContext ctx) {
-            return ctx;
-        }
-        return new NodeRegistryAdapter(registryObj);
-    }
-
-    private static final class NodeRegistryAdapter implements AetherWebContext {
-        private final Object registry;
-
-        NodeRegistryAdapter(Object registry) {
-            this.registry = registry;
-        }
-
-        @Override
-        public int getGlobalOnline() {
-            try {
-                var method = registry.getClass().getMethod("getTotalOnlinePlayers");
-                return (int) method.invoke(registry);
-            } catch (Exception e) {
-                return 0;
-            }
-        }
-
-        @Override
-        public int getGlobalMaxPlayers() {
-            return getServerCount() * 100;
-        }
-
-        @Override
-        public int getServerCount() {
-            try {
-                var method = registry.getClass().getMethod("getNodeCount");
-                return (int) method.invoke(registry);
-            } catch (Exception e) {
-                return 0;
-            }
-        }
-
-        @Override
-        public List<ServerDto> getServers() {
-            return List.of();
-        }
-
-        @Override
-        public List<PlayerDto> getPlayers() {
-            return List.of();
-        }
-
-        @Override
-        public Map<String, Object> getMetrics() {
-            return Map.of(
-                    "totalServers", getServerCount(),
-                    "totalPlayers", getGlobalOnline());
-        }
-
-        @Override
-        public List<PortalDto> getPortals() {
-            return List.of();
-        }
-
-        @Override
-        public void createPortal(PortalDto portal) {
-        }
-
-        @Override
-        public void updatePortal(String id, PortalDto portal) {
-        }
-
-        @Override
-        public void deletePortal(String id) {
-        }
-    }
-
     private void registerRoutes() {
         AuthController authController = new AuthController(jwtService);
         DashboardController dashboardController = new DashboardController(context);
-        PortalController portalController = new PortalController(context);
 
         app.before("/api/*", ctx -> {
             if (ctx.path().equals("/api/auth/login")) {
@@ -140,6 +59,7 @@ public final class WebServer {
 
         app.post("/api/auth/login", authController::login);
         app.post("/api/auth/refresh", authController::refresh);
+        app.post("/api/auth/change-password", authController::changePassword);
         app.get("/api/auth/me", authController::me);
 
         app.get("/api/dashboard/overview", dashboardController::getOverview);
@@ -147,10 +67,15 @@ public final class WebServer {
         app.get("/api/dashboard/players", dashboardController::getPlayers);
         app.get("/api/dashboard/metrics", dashboardController::getMetrics);
 
-        app.get("/api/portals", portalController::list);
-        app.post("/api/portals", portalController::create);
-        app.put("/api/portals/{id}", portalController::update);
-        app.delete("/api/portals/{id}", portalController::delete);
+        app.get("/api/portals", dashboardController::getPortals);
+        app.get("/api/events", dashboardController::getEvents);
+
+        app.get("/api/config/balancer", ctx -> ctx.json(context.getBalancerConfig()));
+        app.post("/api/config/balancer", ctx -> {
+            var config = ctx.bodyAsClass(BalancerConfigDto.class);
+            context.setBalancerConfig(config);
+            ctx.json(Map.of("success", true));
+        });
 
         app.ws("/ws", ws -> {
             ws.onConnect(ctx -> {
@@ -194,23 +119,29 @@ public final class WebServer {
 
         List<PlayerDto> getPlayers();
 
-        Map<String, Object> getMetrics();
-
         List<PortalDto> getPortals();
 
-        void createPortal(PortalDto portal);
+        List<EventDto> getEvents();
 
-        void updatePortal(String id, PortalDto portal);
+        Map<String, Object> getMetrics();
 
-        void deletePortal(String id);
+        BalancerConfigDto getBalancerConfig();
+
+        void setBalancerConfig(BalancerConfigDto config);
     }
 
     public record ServerDto(String name, int online, int maxPlayers, double tps, boolean available) {
     }
 
-    public record PlayerDto(String name, String uuid, String server, long connectedAt) {
+    public record PlayerDto(String name, String uuid, String server, long connectedAt, int ping) {
     }
 
-    public record PortalDto(String id, String sourceServer, String targetServer, String type, boolean seamless) {
+    public record PortalDto(String id, String sourceServer, String targetServer, String type, boolean enabled) {
+    }
+
+    public record EventDto(String type, long count, boolean active, long lastTriggered) {
+    }
+
+    public record BalancerConfigDto(String strategy, boolean vipPriority, List<String> serverGroups) {
     }
 }

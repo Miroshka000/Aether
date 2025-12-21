@@ -40,6 +40,7 @@ public final class NodeConfigLoader {
                     ((Number) master.getOrDefault("port", 3000)).intValue(),
                     (String) server.getOrDefault("name", "node-1"),
                     (String) server.getOrDefault("secret-key", "change-me-secret-key"),
+                    ((Number) server.getOrDefault("bedrock-port", 19132)).intValue(),
                     ((Number) network.getOrDefault("heartbeat-interval-ms", 5000)).intValue(),
                     ((Number) network.getOrDefault("snapshot-interval-ms", 200)).intValue(),
                     ((Number) network.getOrDefault("reconnect-initial-delay-ms", 1000)).intValue(),
@@ -94,6 +95,11 @@ public final class NodeConfigLoader {
                   # Generate with: uuidgen, openssl rand -base64 32, or any password generator
                   # IMPORTANT: Change this in production! Use the same key on all servers.
                   secret-key: "change-me-secret-key"
+
+                  # Bedrock port for this server (used by ProxyTransport)
+                  # This is the port where Minecraft clients would connect if not behind proxy
+                  # Used for optimized TCP/QUIC transport between proxy and server
+                  bedrock-port: 19132
 
                 # Network and timing settings
                 network:

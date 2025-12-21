@@ -29,6 +29,7 @@ dependencies {
     implementation("io.javalin:javalin:6.3.0")
     implementation("com.fasterxml.jackson.core:jackson-databind:2.17.2")
     implementation("com.auth0:java-jwt:4.4.0")
+    implementation("at.favre.lib:bcrypt:0.10.2")
     implementation("org.slf4j:slf4j-simple:2.0.13")
 
     compileOnly("org.projectlombok:lombok:1.18.34")

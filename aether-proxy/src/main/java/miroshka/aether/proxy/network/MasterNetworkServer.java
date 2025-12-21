@@ -34,10 +34,6 @@ public final class MasterNetworkServer {
     private EventLoopGroup workerGroup;
     private ChannelFuture serverChannel;
 
-    public MasterNetworkServer(ProxyConfig config, NodeRegistry nodeRegistry) {
-        this(config, nodeRegistry, null, null);
-    }
-
     public MasterNetworkServer(
             ProxyConfig config,
             NodeRegistry nodeRegistry,

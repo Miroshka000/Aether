@@ -12,6 +12,9 @@ node {
 
 repositories {
     mavenCentral()
+    maven("https://repo.nethergames.org/repository/NetherGamesMC/")
+    maven("https://jitpack.io")
+    mavenLocal()
 }
 
 dependencies {
@@ -20,6 +23,12 @@ dependencies {
     api(project(":aether-web"))
     
     implementation(libs.bundles.metrics)
+    
+    implementation("com.github.NetherGamesMC:ProxyTransport:2.0.6")
+    implementation("com.github.luben:zstd-jni:1.5.5-4")
+    implementation("io.netty.incubator:netty-incubator-codec-native-quic:0.0.62.Final:linux-x86_64")
+    
+    runtimeOnly("org.slf4j:slf4j-simple:2.0.16")
     
     compileOnly("dev.waterdog.waterdogpe:waterdog:2.0.0-SNAPSHOT")
 }

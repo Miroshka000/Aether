@@ -3,26 +3,122 @@ package miroshka.aether.server.portal;
 import miroshka.aether.api.portal.PortalManager;
 import miroshka.aether.common.protocol.TransferRequestPacket;
 import miroshka.aether.server.network.NodeNetworkClient;
+import org.allaymc.api.entity.interfaces.EntityPlayer;
+import org.allaymc.api.eventbus.EventHandler;
+import org.allaymc.api.eventbus.event.player.PlayerMoveEvent;
+import org.allaymc.api.server.Server;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class PortalManagerService implements PortalManager {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(PortalManagerService.class);
+
     private final NodeNetworkClient networkClient;
     private final String serverName;
     private final Map<String, Portal> portals;
+    private final Set<UUID> transferringPlayers;
+    private PortalConfig portalConfig;
 
     public PortalManagerService(NodeNetworkClient networkClient, String serverName) {
         this.networkClient = Objects.requireNonNull(networkClient, "networkClient");
         this.serverName = Objects.requireNonNull(serverName, "serverName");
         this.portals = new ConcurrentHashMap<>();
+        this.transferringPlayers = ConcurrentHashMap.newKeySet();
+    }
+
+    public void loadFromConfig(Path dataFolder) {
+        portalConfig = PortalConfigLoader.load(dataFolder);
+
+        if (!portalConfig.enabled()) {
+            LOGGER.info("Portal system is disabled in config");
+            return;
+        }
+
+        for (PortalConfig.PortalEntry entry : portalConfig.portals()) {
+            Portal portal = createPortalFromConfig(entry);
+            portals.put(portal.id(), portal);
+            LOGGER.info("Loaded portal '{}' -> {} at {},{},{} to {},{},{}",
+                    entry.id(), entry.targetServer(),
+                    entry.minX(), entry.minY(), entry.minZ(),
+                    entry.maxX(), entry.maxY(), entry.maxZ());
+        }
+
+        if (!portals.isEmpty()) {
+            syncPortals();
+            LOGGER.info("Loaded {} portals from config", portals.size());
+        }
+    }
+
+    private Portal createPortalFromConfig(PortalConfig.PortalEntry entry) {
+        RegionConfig region = new RegionConfig(
+                entry.world(),
+                entry.minX(), entry.minY(), entry.minZ(),
+                entry.maxX(), entry.maxY(), entry.maxZ());
+
+        return new Portal(
+                entry.id(),
+                serverName,
+                entry.targetServer(),
+                PortalType.REGION,
+                null,
+                region,
+                entry.seamless(),
+                entry.targetX(),
+                entry.targetY(),
+                entry.targetZ());
+    }
+
+    public void registerEvents() {
+        Server.getInstance().getEventBus().registerListener(this);
+    }
+
+    public void unregisterEvents() {
+        Server.getInstance().getEventBus().unregisterListener(this);
+    }
+
+    @EventHandler
+    public void onPlayerMove(PlayerMoveEvent event) {
+        if (portalConfig == null || !portalConfig.enabled()) {
+            return;
+        }
+
+        EntityPlayer player = event.getPlayer();
+        UUID playerUuid = player.getUniqueId();
+
+        if (transferringPlayers.contains(playerUuid)) {
+            return;
+        }
+
+        var to = event.getTo();
+        String worldName = player.getLocation().dimension().getWorld().getWorldData().getDisplayName();
+
+        findPortalAtLocation(worldName, to.x(), to.y(), to.z()).ifPresent(portal -> {
+            if (!transferringPlayers.add(playerUuid)) {
+                return;
+            }
+
+            LOGGER.info("Player {} entered portal '{}', transferring to {}",
+                    player.getDisplayName(), portal.id(), portal.targetServer());
+
+            transferPlayer(playerUuid, portal).whenComplete((result, ex) -> {
+                Server.getInstance().getScheduler().scheduleDelayed(null, () -> {
+                    transferringPlayers.remove(playerUuid);
+                    return false;
+                }, 100);
+            });
+        });
     }
 
     @Override
@@ -81,7 +177,7 @@ public final class PortalManagerService implements PortalManager {
 
         TransferRequestPacket packet = new TransferRequestPacket(
                 playerUuid, "", serverName, portal.targetServer(), portal.id(),
-                portal.targetX(), portal.targetY(), portal.targetZ(), portal.seamless());
+                (int) portal.targetX(), (int) portal.targetY(), (int) portal.targetZ(), portal.seamless());
         networkClient.sendPacket(packet);
 
         long transferTime = System.currentTimeMillis() - startTime;

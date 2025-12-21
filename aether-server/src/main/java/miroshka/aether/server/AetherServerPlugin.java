@@ -56,6 +56,7 @@ public final class AetherServerPlugin extends Plugin {
                 () -> Server.getInstance().getPlayerManager().getPlayerCount(),
                 () -> Server.getInstance().getPlayerManager().getMaxPlayerCount(),
                 this::getAverageTps);
+        snapshotCollector.setExtraData("bedrock-port", String.valueOf(config.bedrockPort()));
 
         networkClient = new NodeNetworkClient(config, stateCache, snapshotCollector);
 
@@ -79,6 +80,8 @@ public final class AetherServerPlugin extends Plugin {
 
     private void initializeServices(NodeConfig config, ChunkStreamingConfig chunkConfig) {
         portalManager = new PortalManagerService(networkClient, config.serverName());
+        portalManager.loadFromConfig(getPluginContainer().dataFolder());
+        portalManager.registerEvents();
 
         eventBridge = new EventBridgeService(networkClient, config.serverName());
 

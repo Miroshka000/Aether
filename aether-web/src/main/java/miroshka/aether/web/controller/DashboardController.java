@@ -4,6 +4,8 @@ import io.javalin.http.Context;
 import miroshka.aether.web.WebServer.AetherWebContext;
 import miroshka.aether.web.WebServer.ServerDto;
 import miroshka.aether.web.WebServer.PlayerDto;
+import miroshka.aether.web.WebServer.PortalDto;
+import miroshka.aether.web.WebServer.EventDto;
 
 import java.util.List;
 import java.util.Map;
@@ -50,6 +52,16 @@ public final class DashboardController {
         ctx.json(metrics);
     }
 
+    public void getPortals(Context ctx) {
+        List<PortalDto> portals = context.getPortals();
+        ctx.json(new PortalsResponse(portals, portals.size()));
+    }
+
+    public void getEvents(Context ctx) {
+        List<EventDto> events = context.getEvents();
+        ctx.json(new EventsResponse(events, events.size()));
+    }
+
     private double calculateAverageTps() {
         List<ServerDto> servers = context.getServers();
         if (servers.isEmpty()) {
@@ -73,5 +85,11 @@ public final class DashboardController {
     }
 
     public record PlayersResponse(List<PlayerDto> players, int count) {
+    }
+
+    public record PortalsResponse(List<PortalDto> portals, int count) {
+    }
+
+    public record EventsResponse(List<EventDto> events, int count) {
     }
 }

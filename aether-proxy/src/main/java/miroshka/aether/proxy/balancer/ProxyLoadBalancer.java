@@ -8,34 +8,30 @@ import miroshka.aether.proxy.NodeSession;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public final class ProxyLoadBalancer {
 
+    private static final Strategy DEFAULT_STRATEGY = Strategy.LEAST_CONNECTIONS;
+
     private final ProxyServer proxyServer;
     private final NodeRegistry nodeRegistry;
-    private final Map<UUID, Integer> playerPriorities;
     private final AtomicInteger roundRobinCounter;
     private final Random random;
-    private volatile Strategy defaultStrategy;
 
     public ProxyLoadBalancer(ProxyServer proxyServer, NodeRegistry nodeRegistry) {
         this.proxyServer = Objects.requireNonNull(proxyServer, "proxyServer");
         this.nodeRegistry = Objects.requireNonNull(nodeRegistry, "nodeRegistry");
-        this.playerPriorities = new ConcurrentHashMap<>();
         this.roundRobinCounter = new AtomicInteger(0);
         this.random = new Random();
-        this.defaultStrategy = Strategy.LEAST_CONNECTIONS;
     }
 
     public Optional<ServerInfo> selectServer(UUID playerUuid, List<String> candidates) {
-        return selectServer(playerUuid, candidates, defaultStrategy);
+        return selectServer(playerUuid, candidates, DEFAULT_STRATEGY);
     }
 
     public Optional<ServerInfo> selectServer(UUID playerUuid, List<String> candidates, Strategy strategy) {
@@ -53,7 +49,7 @@ public final class ProxyLoadBalancer {
                 int maxPlayers = sessionOpt.map(s -> s.state().getMaxPlayers()).orElse(100);
 
                 if (online < maxPlayers) {
-                    available.add(new ServerMetrics(info, online, maxPlayers, tps));
+                    available.add(new ServerMetrics(info, online, tps));
                 }
             }
         }
@@ -67,7 +63,6 @@ public final class ProxyLoadBalancer {
             case LEAST_CONNECTIONS -> selectLeastConnections(available);
             case LEAST_TPS_LOAD -> selectLeastTpsLoad(available);
             case RANDOM -> selectRandom(available);
-            case PRIORITY_QUEUE -> selectWithPriority(playerUuid, available);
         };
     }
 
@@ -93,38 +88,13 @@ public final class ProxyLoadBalancer {
         return Optional.of(available.get(index).serverInfo);
     }
 
-    private Optional<ServerInfo> selectWithPriority(UUID playerUuid, List<ServerMetrics> available) {
-        int priority = playerPriorities.getOrDefault(playerUuid, 0);
-
-        if (priority > 0) {
-            return available.stream()
-                    .min(Comparator.comparingDouble(m -> (double) m.onlinePlayers / m.maxPlayers))
-                    .map(m -> m.serverInfo);
-        }
-
-        return selectLeastConnections(available);
-    }
-
-    public void setDefaultStrategy(Strategy strategy) {
-        this.defaultStrategy = Objects.requireNonNull(strategy, "strategy");
-    }
-
-    public void setPlayerPriority(UUID playerUuid, int priority) {
-        if (priority <= 0) {
-            playerPriorities.remove(playerUuid);
-        } else {
-            playerPriorities.put(playerUuid, priority);
-        }
-    }
-
     public enum Strategy {
         ROUND_ROBIN,
         LEAST_CONNECTIONS,
         LEAST_TPS_LOAD,
-        RANDOM,
-        PRIORITY_QUEUE
+        RANDOM
     }
 
-    private record ServerMetrics(ServerInfo serverInfo, int onlinePlayers, int maxPlayers, double tps) {
+    private record ServerMetrics(ServerInfo serverInfo, int onlinePlayers, double tps) {
     }
 }

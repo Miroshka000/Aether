@@ -3,72 +3,74 @@ package miroshka.aether.proxy.transfer;
 import dev.waterdog.waterdogpe.ProxyServer;
 import dev.waterdog.waterdogpe.network.serverinfo.ServerInfo;
 import dev.waterdog.waterdogpe.player.ProxiedPlayer;
+import lombok.RequiredArgsConstructor;
 import miroshka.aether.common.protocol.TransferRequestPacket;
+import miroshka.aether.proxy.balancer.ProxyLoadBalancer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.util.Objects;
+import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 
+@RequiredArgsConstructor
 public final class SeamlessTransferHandler {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(SeamlessTransferHandler.class);
+
     private final ProxyServer proxyServer;
+    private final ProxyLoadBalancer loadBalancer;
 
-    public SeamlessTransferHandler(ProxyServer proxyServer) {
-        this.proxyServer = Objects.requireNonNull(proxyServer, "proxyServer");
-    }
-
-    public CompletableFuture<TransferResult> transfer(UUID playerUuid, String targetServerName, boolean seamless) {
+    public TransferResult transfer(UUID playerUuid, String targetServerName, boolean seamless) {
         ProxiedPlayer player = proxyServer.getPlayer(playerUuid);
         if (player == null) {
-            return CompletableFuture.completedFuture(TransferResult.failure("Player not found"));
+            return TransferResult.failure("Player not found");
         }
 
         ServerInfo targetServer = proxyServer.getServerInfo(targetServerName);
         if (targetServer == null) {
-            return CompletableFuture
-                    .completedFuture(TransferResult.failure("Target server not found: " + targetServerName));
+            return TransferResult.failure("Target server not found: " + targetServerName);
         }
 
-        long startTime = System.currentTimeMillis();
+        return executeTransfer(player, targetServer, seamless);
+    }
 
-        CompletableFuture<TransferResult> future = new CompletableFuture<>();
-
-        if (seamless) {
-            executeSeamlessTransfer(player, targetServer, startTime, future);
-        } else {
-            executeStandardTransfer(player, targetServer, startTime, future);
+    public TransferResult transferWithLoadBalancing(UUID playerUuid, List<String> candidateServers, boolean seamless) {
+        ProxiedPlayer player = proxyServer.getPlayer(playerUuid);
+        if (player == null) {
+            return TransferResult.failure("Player not found");
         }
 
-        return future;
+        Optional<ServerInfo> selectedServer = loadBalancer.selectServer(playerUuid, candidateServers);
+        if (selectedServer.isEmpty()) {
+            return TransferResult.failure("No available servers");
+        }
+
+        ServerInfo targetServer = selectedServer.get();
+        LOGGER.debug("Load balancer selected server {} for player {}", targetServer.getServerName(), player.getName());
+
+        return executeTransfer(player, targetServer, seamless);
     }
 
     public void handleTransferRequest(TransferRequestPacket packet) {
         transfer(packet.playerUuid(), packet.targetServer(), packet.seamless());
     }
 
-    private void executeSeamlessTransfer(ProxiedPlayer player, ServerInfo targetServer,
-            long startTime, CompletableFuture<TransferResult> future) {
+    private TransferResult executeTransfer(ProxiedPlayer player, ServerInfo targetServer, boolean seamless) {
+        long startTime = System.currentTimeMillis();
         player.connect(targetServer);
-
         long transferTime = System.currentTimeMillis() - startTime;
-        future.complete(TransferResult.success(transferTime, true));
+        return TransferResult.success(transferTime, seamless, targetServer.getServerName());
     }
 
-    private void executeStandardTransfer(ProxiedPlayer player, ServerInfo targetServer,
-            long startTime, CompletableFuture<TransferResult> future) {
-        player.connect(targetServer);
-
-        long transferTime = System.currentTimeMillis() - startTime;
-        future.complete(TransferResult.success(transferTime, false));
-    }
-
-    public record TransferResult(boolean success, String message, long transferTimeMs, boolean seamless) {
-        public static TransferResult success(long transferTimeMs, boolean seamless) {
-            return new TransferResult(true, "Transfer successful", transferTimeMs, seamless);
+    public record TransferResult(boolean success, String message, long transferTimeMs, boolean seamless,
+            String targetServer) {
+        public static TransferResult success(long transferTimeMs, boolean seamless, String targetServer) {
+            return new TransferResult(true, "Transfer successful", transferTimeMs, seamless, targetServer);
         }
 
         public static TransferResult failure(String reason) {
-            return new TransferResult(false, reason, 0, false);
+            return new TransferResult(false, reason, 0, false, null);
         }
     }
 }

@@ -14,13 +14,15 @@ public record ProxyConfig(
         int heartbeatTimeoutMillis,
         int rateLimitPacketsPerSecond,
         int rateLimitBurstSize,
-        boolean compressionEnabled) {
+        boolean compressionEnabled,
+        TransportConfig transport) {
 
     public ProxyConfig {
         Objects.requireNonNull(network, "network");
         Objects.requireNonNull(secretKeys, "secretKeys");
         Objects.requireNonNull(webJwtSecret, "webJwtSecret");
         Objects.requireNonNull(allowedIpRanges, "allowedIpRanges");
+        Objects.requireNonNull(transport, "transport");
         if (secretKeys.isEmpty()) {
             throw new IllegalArgumentException("At least one secret key is required");
         }
@@ -37,7 +39,8 @@ public record ProxyConfig(
                 15000,
                 100,
                 200,
-                true);
+                true,
+                TransportConfig.defaults());
     }
 
     public record NetworkConfig(int port, int metricsPort, int webPort) {

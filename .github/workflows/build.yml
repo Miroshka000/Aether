@@ -10,6 +10,7 @@ on:
       - settings.gradle.kts
       - aether-*/src/**
       - aether-*/build.gradle.kts
+      - aether-web/frontend/**
   pull_request:
     branches: [ "master" ]
   workflow_dispatch:
@@ -20,7 +21,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     outputs:
       version: ${{ steps.get_version.outputs.VERSION }}
     steps:
@@ -32,6 +33,13 @@ jobs:
         with:
           java-version: '21'
           distribution: 'zulu'
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: aether-web/frontend/package-lock.json
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
@@ -49,23 +57,59 @@ jobs:
           echo "Detected version: $VERSION"
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Build
+      - name: Build Full (with Web Panel)
         run: |
           chmod +x gradlew
-          ./gradlew build
+          ./gradlew :aether-proxy:shadowJar :aether-server:build
+
+      - name: Rename artifacts (with Web)
+        run: |
+          mkdir -p artifacts/with-web
+          cp aether-proxy/build/libs/aether-proxy-*.jar artifacts/with-web/
+          cp aether-server/build/libs/aether-server-*.jar artifacts/with-web/
+          cd artifacts/with-web
+          for f in *.jar; do mv "$f" "${f%.jar}-web.jar" 2>/dev/null || true; done
+
+      - name: Build Lite (without Web Panel)
+        run: |
+          rm -rf aether-web/frontend/dist
+          rm -rf aether-web/src/main/resources/static
+          mkdir -p aether-web/src/main/resources/static
+          echo '<!DOCTYPE html><html><body><h1>Web Panel not included</h1><p>Use aether-proxy-*-web.jar for Web Panel</p></body></html>' > aether-web/src/main/resources/static/index.html
+          ./gradlew :aether-proxy:shadowJar -x buildFrontend -x npmInstall
+
+      - name: Rename artifacts (lite)
+        run: |
+          mkdir -p artifacts/lite
+          cp aether-proxy/build/libs/aether-proxy-*.jar artifacts/lite/
+          cp aether-server/build/libs/aether-server-*.jar artifacts/lite/
+          cd artifacts/lite
+          for f in *-web.jar; do mv "$f" "${f%-web.jar}-lite.jar" 2>/dev/null || true; done
+          for f in *.jar; do
+            if [[ ! "$f" == *-lite.jar ]]; then
+              mv "$f" "${f%.jar}-lite.jar" 2>/dev/null || true
+            fi
+          done
 
       - name: Upload aether-server artifact
         uses: actions/upload-artifact@v4
         with:
           name: aether-server-${{ steps.get_version.outputs.VERSION }}
-          path: aether-server/build/libs/aether-server-*.jar
+          path: artifacts/with-web/aether-server-*.jar
           if-no-files-found: error
 
-      - name: Upload aether-proxy artifact
+      - name: Upload aether-proxy-web artifact
         uses: actions/upload-artifact@v4
         with:
-          name: aether-proxy-${{ steps.get_version.outputs.VERSION }}
-          path: aether-proxy/build/libs/aether-proxy-*.jar
+          name: aether-proxy-web-${{ steps.get_version.outputs.VERSION }}
+          path: artifacts/with-web/aether-proxy-*.jar
+          if-no-files-found: error
+
+      - name: Upload aether-proxy-lite artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: aether-proxy-lite-${{ steps.get_version.outputs.VERSION }}
+          path: artifacts/lite/aether-proxy-*-lite.jar
           if-no-files-found: error
 
   release:
@@ -79,10 +123,16 @@ jobs:
           name: aether-server-${{ needs.build.outputs.version }}
           path: artifacts
 
-      - name: Download aether-proxy artifact
+      - name: Download aether-proxy-web artifact
         uses: actions/download-artifact@v4
         with:
-          name: aether-proxy-${{ needs.build.outputs.version }}
+          name: aether-proxy-web-${{ needs.build.outputs.version }}
+          path: artifacts
+
+      - name: Download aether-proxy-lite artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: aether-proxy-lite-${{ needs.build.outputs.version }}
           path: artifacts
 
       - name: Create Release
@@ -95,34 +145,46 @@ jobs:
           body: |
             ## 🚀 Aether v${{ needs.build.outputs.version }}
             
-            Cross-server communication system for AllayMC and WaterdogPE networks.
+            **Cross-server communication system** for AllayMC and WaterdogPE networks with optimized TCP/QUIC transport.
             
-            ### 📦 Installation
+            ### 📦 Downloads
             
             | File | Description |
             |------|-------------|
-            | `aether-server-${{ needs.build.outputs.version }}.jar` | **AllayMC Plugin** - Install on each game server |
-            | `aether-proxy-${{ needs.build.outputs.version }}.jar` | **WaterdogPE Plugin** - Install on proxy server |
+            | `aether-server-*-web.jar` | **AllayMC Plugin** - Install on each game server |
+            | `aether-proxy-*-web.jar` | **WaterdogPE Plugin** - Full version with Web Admin Panel |
+            | `aether-proxy-*-lite.jar` | **WaterdogPE Plugin** - Lightweight version without Web Panel |
             
             ### 🔧 Quick Setup
             
             1. Place `aether-proxy-*.jar` in your WaterdogPE `plugins/` folder
             2. Place `aether-server-*.jar` in each AllayMC server `plugins/` folder
             3. Configure `config.yml` on each server with matching `secret-key`
-            4. Restart all servers
+            4. Start proxy, then start game servers
+            5. Access Web Panel at `http://localhost:8080` (default: admin/admin)
+            
+            ### ✨ Features
+            
+            - 🌐 **Web Admin Panel** - Beautiful dashboard for monitoring
+            - 🔗 **ProxyTransport** - TCP/QUIC transport for lower latency
+            - 👥 **Real-time sync** - Player counts, TPS, server status
+            - 🌀 **Portal System** - Region-based server transfer
+            - ⚖️ **Load Balancer** - Multiple strategies (Round Robin, Least Connections, etc.)
+            - 📡 **Event Bridge** - Cross-server events and messaging
+            - 🔄 **Auto-reconnect** - Automatic recovery on connection loss
+            - 📊 **PlaceholderAPI** - Integration for scorebards and chat
+            
+            ### 🔐 Security Notice
+            
+            ⚠️ **Change default credentials immediately!**
+            - Default login: `admin` / `admin`
+            - SSL certificate recommended for production
             
             ### 📚 Documentation
             
             - [API Documentation](https://github.com/Miroshka000/Aether/blob/master/docs/API.md)
             - [README (English)](https://github.com/Miroshka000/Aether/blob/master/README.md)
             - [README (Русский)](https://github.com/Miroshka000/Aether/blob/master/README_RU.md)
-            
-            ### ✨ Features
-            
-            - Real-time player count synchronization
-            - PlaceholderAPI integration
-            - Low-latency TCP communication
-            - Automatic reconnection
             
             ---
             

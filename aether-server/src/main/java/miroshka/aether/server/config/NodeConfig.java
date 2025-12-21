@@ -7,6 +7,7 @@ public record NodeConfig(
         int masterPort,
         String serverName,
         String secretKey,
+        int bedrockPort,
         int heartbeatIntervalMillis,
         int snapshotIntervalMillis,
         int reconnectionInitialDelayMillis,
@@ -16,6 +17,9 @@ public record NodeConfig(
         Objects.requireNonNull(masterHost, "masterHost");
         Objects.requireNonNull(serverName, "serverName");
         Objects.requireNonNull(secretKey, "secretKey");
+        if (bedrockPort <= 0) {
+            throw new IllegalArgumentException("bedrockPort must be positive");
+        }
     }
 
     public static NodeConfig defaults() {
@@ -24,6 +28,7 @@ public record NodeConfig(
                 3000,
                 "node-1",
                 "change-me-secret-key",
+                19132,
                 5000,
                 200,
                 1000,

@@ -107,6 +107,21 @@ const resources = {
                 signingIn: 'Signing in...',
                 invalidCredentials: 'Invalid credentials'
             },
+            security: {
+                title: 'Security Warning',
+                warningTitle: 'You are using default credentials!',
+                warningText: 'Please change your password immediately to secure your admin panel.',
+                sslTitle: 'SSL Recommended:',
+                sslText: 'For production use, configure an SSL certificate to encrypt traffic between your browser and the server.',
+                newPassword: 'New Password',
+                confirmPassword: 'Confirm Password',
+                newPasswordPlaceholder: 'Enter new password (min 8 chars)',
+                confirmPasswordPlaceholder: 'Confirm new password',
+                changePassword: 'Change Password',
+                skip: 'Skip for now',
+                minLength: 'Password must be at least 8 characters',
+                noMatch: 'Passwords do not match'
+            },
             common: {
                 loading: 'Loading...',
                 nodes: 'nodes',
@@ -218,6 +233,21 @@ const resources = {
                 signIn: 'Войти',
                 signingIn: 'Вход...',
                 invalidCredentials: 'Неверные данные'
+            },
+            security: {
+                title: 'Предупреждение безопасности',
+                warningTitle: 'Вы используете стандартные учётные данные!',
+                warningText: 'Пожалуйста, немедленно смените пароль для защиты панели администратора.',
+                sslTitle: 'Рекомендуется SSL:',
+                sslText: 'Для продакшена настройте SSL сертификат для шифрования трафика между браузером и сервером.',
+                newPassword: 'Новый пароль',
+                confirmPassword: 'Подтвердите пароль',
+                newPasswordPlaceholder: 'Введите новый пароль (мин. 8 символов)',
+                confirmPasswordPlaceholder: 'Подтвердите новый пароль',
+                changePassword: 'Сменить пароль',
+                skip: 'Пропустить',
+                minLength: 'Пароль должен быть не менее 8 символов',
+                noMatch: 'Пароли не совпадают'
             },
             common: {
                 loading: 'Загрузка...',
