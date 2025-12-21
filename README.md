@@ -5,7 +5,7 @@
 **High-Performance Network Bridge for WaterdogPE & AllayMC**
 
 [![License](https://img.shields.io/badge/License-GPL%203.0-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-1.0.0-green.svg)](https://github.com/Miroshka000/Aether/releases)
+[![Version](https://img.shields.io/badge/Version-1.0.1-green.svg)](https://github.com/Miroshka000/Aether/releases)
 [![Java](https://img.shields.io/badge/Java-21+-purple.svg)](https://adoptium.net/)
 [![Netty](https://img.shields.io/badge/Netty-4.2.x-orange.svg)](https://netty.io/)
 [![Build](https://github.com/Miroshka000/Aether/actions/workflows/build.yml/badge.svg)](https://github.com/Miroshka000/Aether/actions)
@@ -24,6 +24,7 @@
 
 ### Core
 - **Ultra-Low Latency**: < 2ms network latency with TCP_NODELAY and Netty optimizations
+- **ProxyTransport**: Optimized TCP & QUIC transport for backend servers (replaces RakNet)
 - **Binary Protocol**: Custom framing with VarInt encoding and Snappy compression
 - **Star Topology**: Proxy acts as Master, orchestrating network state across all Nodes
 - **Real-time Sync**: Automatic state broadcasting with configurable intervals
@@ -37,7 +38,7 @@
 - **💾 Distributed PDC**: PersistentDataContainer sync across network
 - **⚖️ Smart Load Balancer**: Multiple strategies (Round Robin, Least Connections, etc.)
 - **🔧 Packet Rewrite Pipeline**: Entity filtering, resource pack overrides
-- **🌐 Web Admin Panel**: REST API + WebSocket for real-time monitoring
+- **🌐 Web Admin Panel**: REST API + WebSocket, i18n support (EN/RU), real-time monitoring
 - **🔌 Addons System**: Extensible addon architecture (coming soon)
 
 ## 🏗️ Architecture
@@ -168,6 +169,7 @@ api.getLoadBalancer().ifPresent(balancer -> {
 ## ⚙️ Configuration Files
 
 See detailed configuration in:
+- `config.yml` - Main configuration (Transport: TCP/QUIC)
 - `portals.yml` - Portal definitions
 - `events.yml` - Event subscriptions
 - `load-balancer.yml` - Balancing strategies

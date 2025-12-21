@@ -31,7 +31,7 @@ dependencyResolutionManagement {
 
 // build.gradle.kts
 dependencies {
-    implementation("com.github.Miroshka000.Aether:aether-api:v1.0.0")
+    implementation("com.github.Miroshka000.Aether:aether-api:v1.0.1")
 }
 ```
 
@@ -49,7 +49,7 @@ dependencyResolutionManagement {
 
 // build.gradle
 dependencies {
-    implementation 'com.github.Miroshka000.Aether:aether-api:v1.0.0'
+    implementation 'com.github.Miroshka000.Aether:aether-api:v1.0.1'
 }
 ```
 
@@ -66,7 +66,7 @@ dependencies {
 <dependency>
     <groupId>com.github.Miroshka000.Aether</groupId>
     <artifactId>aether-api</artifactId>
-    <version>v1.0.0</version>
+    <version>v1.0.1</version>
 </dependency>
 ```
 
