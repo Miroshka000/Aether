@@ -10,11 +10,13 @@ repositories {
 
 allay {
     api = "0.18.0"
-    apiOnly = true
+    apiOnly = false
     generatePluginDescriptor = true
     
     plugin {
+        name = "Aether"
         entrance = "miroshka.aether.server.AetherServerPlugin"
+        version = project.version.toString()
         authors += "Miroshka"
         website = "https://github.com/Miroshka000/Aether"
         dependency("PlaceholderAPI")

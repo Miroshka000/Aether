@@ -32,37 +32,92 @@ public final class PortalConfigLoader {
 
         try (InputStream is = Files.newInputStream(configPath)) {
             Map<String, Object> data = yaml.load(is);
+            if (data == null) {
+                return PortalConfig.defaults();
+            }
 
-            boolean enabled = (Boolean) data.getOrDefault("enabled", true);
-            List<Map<String, Object>> portalsList = (List<Map<String, Object>>) data.getOrDefault("portals", List.of());
-
+            boolean enabled = true;
             List<PortalConfig.PortalEntry> portals = new ArrayList<>();
-            for (Map<String, Object> portalData : portalsList) {
-                portals.add(parsePortal(portalData));
+
+            Object portalsObj = data.get("portals");
+            if (portalsObj instanceof Map) {
+                Map<String, Object> portalsMap = (Map<String, Object>) portalsObj;
+                enabled = (Boolean) portalsMap.getOrDefault("enabled", true);
+
+                Object listObj = portalsMap.get("list");
+                if (listObj instanceof Map) {
+                    Map<String, Object> listMap = (Map<String, Object>) listObj;
+                    for (Map.Entry<String, Object> entry : listMap.entrySet()) {
+                        String id = entry.getKey();
+                        Object portalValue = entry.getValue();
+                        if (portalValue instanceof Map) {
+                            PortalConfig.PortalEntry parsed = parsePortal(id, (Map<String, Object>) portalValue);
+                            if (parsed != null) {
+                                portals.add(parsed);
+                            }
+                        }
+                    }
+                }
+            } else if (portalsObj instanceof List) {
+                enabled = (Boolean) data.getOrDefault("enabled", true);
+                for (Object item : (List<?>) portalsObj) {
+                    if (item instanceof Map) {
+                        PortalConfig.PortalEntry parsed = parsePortal(null, (Map<String, Object>) item);
+                        if (parsed != null) {
+                            portals.add(parsed);
+                        }
+                    }
+                }
+            } else {
+                enabled = (Boolean) data.getOrDefault("enabled", true);
             }
 
             return new PortalConfig(enabled, portals);
-        } catch (IOException e) {
+        } catch (IOException | ClassCastException e) {
             throw new RuntimeException("Failed to load portal config from " + configPath, e);
         }
     }
 
     @SuppressWarnings("unchecked")
-    private static PortalConfig.PortalEntry parsePortal(Map<String, Object> data) {
-        String id = (String) data.get("id");
-        String targetServer = (String) data.get("target-server");
-        String world = (String) data.getOrDefault("world", "world");
-        boolean seamless = (Boolean) data.getOrDefault("seamless", true);
+    private static PortalConfig.PortalEntry parsePortal(String idFromKey, Map<String, Object> data) {
+        try {
+            String id = (String) data.getOrDefault("id", idFromKey);
+            String targetServer = (String) data.get("target-server");
+            if (id == null || targetServer == null)
+                return null;
 
-        Map<String, Object> pos1Data = (Map<String, Object>) data.get("pos1");
-        Map<String, Object> pos2Data = (Map<String, Object>) data.get("pos2");
-        Map<String, Object> spawnData = (Map<String, Object>) data.get("spawn");
+            boolean seamless = (Boolean) data.getOrDefault("seamless", true);
 
-        PortalConfig.Position pos1 = parsePosition(pos1Data);
-        PortalConfig.Position pos2 = parsePosition(pos2Data);
-        PortalConfig.Position spawn = spawnData != null ? parsePosition(spawnData) : null;
+            if (data.containsKey("region")) {
+                Map<String, Object> region = (Map<String, Object>) data.get("region");
+                String world = (String) region.getOrDefault("world", "world");
+                PortalConfig.Position pos1 = new PortalConfig.Position(
+                        ((Number) region.getOrDefault("min-x", 0)).intValue(),
+                        ((Number) region.getOrDefault("min-y", 0)).intValue(),
+                        ((Number) region.getOrDefault("min-z", 0)).intValue());
+                PortalConfig.Position pos2 = new PortalConfig.Position(
+                        ((Number) region.getOrDefault("max-x", 0)).intValue(),
+                        ((Number) region.getOrDefault("max-y", 0)).intValue(),
+                        ((Number) region.getOrDefault("max-z", 0)).intValue());
+                return new PortalConfig.PortalEntry(id, targetServer, world, pos1, pos2, null, seamless);
+            }
 
-        return new PortalConfig.PortalEntry(id, targetServer, world, pos1, pos2, spawn, seamless);
+            String world = (String) data.getOrDefault("world", "world");
+            Map<String, Object> pos1Data = (Map<String, Object>) data.get("pos1");
+            Map<String, Object> pos2Data = (Map<String, Object>) data.get("pos2");
+            Map<String, Object> spawnData = (Map<String, Object>) data.get("spawn");
+
+            if (pos1Data == null || pos2Data == null)
+                return null;
+
+            PortalConfig.Position pos1 = parsePosition(pos1Data);
+            PortalConfig.Position pos2 = parsePosition(pos2Data);
+            PortalConfig.Position spawn = spawnData != null ? parsePosition(spawnData) : null;
+
+            return new PortalConfig.PortalEntry(id, targetServer, world, pos1, pos2, spawn, seamless);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private static PortalConfig.Position parsePosition(Map<String, Object> data) {
@@ -83,52 +138,17 @@ public final class PortalConfigLoader {
                 # ============================================================
                 # Aether Portal Configuration
                 # ============================================================
-                # Define portal regions that transfer players to other servers
-                # when they enter the specified area.
-                #
-                # Портала определяются двумя координатами (pos1 и pos2),
-                # образующими прямоугольную область. Когда игрок входит в эту
-                # область, он будет перемещён на указанный сервер.
-                # ============================================================
-
                 # Enable portal system (включить систему порталов)
                 enabled: true
 
                 # Portal definitions (определения порталов)
                 portals:
-                  # Example portal configuration:
-                  # Пример конфигурации портала:
-                  #
-                  # - id: "lobby-to-survival"
-                  #   target-server: "survival"
-                  #   world: "world"
-                  #   pos1:
-                  #     x: 100
-                  #     y: 60
-                  #     z: 100
-                  #   pos2:
-                  #     x: 103      # Portal is 3 blocks wide (X)
-                  #     y: 63       # Portal is 3 blocks tall (Y)
-                  #     z: 100      # Portal is 1 block deep (Z)
-                  #   spawn:        # Optional: where to spawn on target server
-                  #     x: 0
-                  #     y: 64
-                  #     z: 0
-                  #   seamless: true  # Use seamless transfer (no loading screen)
-
-                  # Another example - larger portal area:
-                  # - id: "hub-portal"
-                  #   target-server: "minigames"
-                  #   world: "world"
-                  #   pos1:
-                  #     x: -10
-                  #     y: 50
-                  #     z: -10
-                  #   pos2:
-                  #     x: 10
-                  #     y: 70
-                  #     z: 10
-                  #   seamless: false
+                  - id: "example-portal"
+                    target-server: "survival"
+                    world: "world"
+                    pos1: {x: 100, y: 60, z: 100}
+                    pos2: {x: 103, y: 63, z: 100}
+                    seamless: true
                 """;
 
         try (Writer writer = Files.newBufferedWriter(configPath)) {
