@@ -37,7 +37,7 @@ public final class PortalConfigLoader {
             }
 
             boolean enabled = true;
-            List<PortalConfig.PortalEntry> portals = new ArrayList<>();
+            List<PortalConfig.PortalDefinition> portals = new ArrayList<>();
 
             Object portalsObj = data.get("portals");
             if (portalsObj instanceof Map) {
@@ -51,25 +51,13 @@ public final class PortalConfigLoader {
                         String id = entry.getKey();
                         Object portalValue = entry.getValue();
                         if (portalValue instanceof Map) {
-                            PortalConfig.PortalEntry parsed = parsePortal(id, (Map<String, Object>) portalValue);
+                            PortalConfig.PortalDefinition parsed = parsePortal(id, (Map<String, Object>) portalValue);
                             if (parsed != null) {
                                 portals.add(parsed);
                             }
                         }
                     }
                 }
-            } else if (portalsObj instanceof List) {
-                enabled = (Boolean) data.getOrDefault("enabled", true);
-                for (Object item : (List<?>) portalsObj) {
-                    if (item instanceof Map) {
-                        PortalConfig.PortalEntry parsed = parsePortal(null, (Map<String, Object>) item);
-                        if (parsed != null) {
-                            portals.add(parsed);
-                        }
-                    }
-                }
-            } else {
-                enabled = (Boolean) data.getOrDefault("enabled", true);
             }
 
             return new PortalConfig(enabled, portals);
@@ -79,82 +67,64 @@ public final class PortalConfigLoader {
     }
 
     @SuppressWarnings("unchecked")
-    private static PortalConfig.PortalEntry parsePortal(String idFromKey, Map<String, Object> data) {
+    private static PortalConfig.PortalDefinition parsePortal(String id, Map<String, Object> data) {
         try {
-            String id = (String) data.getOrDefault("id", idFromKey);
+            String typeStr = (String) data.getOrDefault("type", "REGION");
             String targetServer = (String) data.get("target-server");
-            if (id == null || targetServer == null)
-                return null;
-
             boolean seamless = (Boolean) data.getOrDefault("seamless", true);
+            boolean enabled = (Boolean) data.getOrDefault("enabled", true);
 
-            if (data.containsKey("region")) {
+            if (targetServer == null) return null;
+
+            if ("BOUNDARY".equalsIgnoreCase(typeStr)) {
+                Map<String, Object> boundary = (Map<String, Object>) data.get("boundary");
+                if (boundary == null) return null;
+
+                String world = (String) boundary.getOrDefault("world", "world");
+                String dirStr = (String) boundary.get("direction");
+                PortalConfig.Direction direction = PortalConfig.Direction.valueOf(dirStr.toUpperCase());
+                int threshold = ((Number) boundary.getOrDefault("threshold", 0)).intValue();
+
+                return new PortalConfig.BoundaryPortalDefinition(id, targetServer, seamless, enabled, world, direction, threshold);
+            } else {
                 Map<String, Object> region = (Map<String, Object>) data.get("region");
-                String world = (String) region.getOrDefault("world", "world");
-                PortalConfig.Position pos1 = new PortalConfig.Position(
-                        ((Number) region.getOrDefault("min-x", 0)).intValue(),
-                        ((Number) region.getOrDefault("min-y", 0)).intValue(),
-                        ((Number) region.getOrDefault("min-z", 0)).intValue());
-                PortalConfig.Position pos2 = new PortalConfig.Position(
-                        ((Number) region.getOrDefault("max-x", 0)).intValue(),
-                        ((Number) region.getOrDefault("max-y", 0)).intValue(),
-                        ((Number) region.getOrDefault("max-z", 0)).intValue());
-                return new PortalConfig.PortalEntry(id, targetServer, world, pos1, pos2, null, seamless);
-            }
-
-            String world = (String) data.getOrDefault("world", "world");
-            Map<String, Object> pos1Data = (Map<String, Object>) data.get("pos1");
-            Map<String, Object> pos2Data = (Map<String, Object>) data.get("pos2");
-            Map<String, Object> spawnData = (Map<String, Object>) data.get("spawn");
-
-            if (pos1Data == null || pos2Data == null)
+                if (region != null) {
+                    String world = (String) region.getOrDefault("world", "world");
+                    PortalConfig.Position min = new PortalConfig.Position(
+                            ((Number) region.getOrDefault("min-x", 0)).intValue(),
+                            ((Number) region.getOrDefault("min-y", 0)).intValue(),
+                            ((Number) region.getOrDefault("min-z", 0)).intValue());
+                    PortalConfig.Position max = new PortalConfig.Position(
+                            ((Number) region.getOrDefault("max-x", 0)).intValue(),
+                            ((Number) region.getOrDefault("max-y", 0)).intValue(),
+                            ((Number) region.getOrDefault("max-z", 0)).intValue());
+                    return new PortalConfig.RegionPortalDefinition(id, targetServer, seamless, enabled, world, min, max);
+                }
+                
                 return null;
-
-            PortalConfig.Position pos1 = parsePosition(pos1Data);
-            PortalConfig.Position pos2 = parsePosition(pos2Data);
-            PortalConfig.Position spawn = spawnData != null ? parsePosition(spawnData) : null;
-
-            return new PortalConfig.PortalEntry(id, targetServer, world, pos1, pos2, spawn, seamless);
+            }
         } catch (Exception e) {
             return null;
         }
     }
 
-    private static PortalConfig.Position parsePosition(Map<String, Object> data) {
-        int x = ((Number) data.getOrDefault("x", 0)).intValue();
-        int y = ((Number) data.getOrDefault("y", 64)).intValue();
-        int z = ((Number) data.getOrDefault("z", 0)).intValue();
-        return new PortalConfig.Position(x, y, z);
-    }
-
     private static void createDefaultConfig(Path configPath) {
-        try {
-            Files.createDirectories(configPath.getParent());
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to create config directory", e);
-        }
-
         String configContent = """
-                # ============================================================
-                # Aether Portal Configuration
-                # ============================================================
-                # Enable portal system (включить систему порталов)
-                enabled: true
-
-                # Portal definitions (определения порталов)
                 portals:
-                  - id: "example-portal"
-                    target-server: "survival"
-                    world: "world"
-                    pos1: {x: 100, y: 60, z: 100}
-                    pos2: {x: 103, y: 63, z: 100}
-                    seamless: true
+                  enabled: true
+                  list:
+                    example-boundary:
+                      type: BOUNDARY
+                      target-server: survival
+                      boundary:
+                        world: world
+                        direction: EAST
+                        threshold: 1000
                 """;
-
         try (Writer writer = Files.newBufferedWriter(configPath)) {
             writer.write(configContent);
         } catch (IOException e) {
-            throw new RuntimeException("Failed to create default portal config at " + configPath, e);
+            throw new RuntimeException("Failed to create default portal config", e);
         }
     }
 }

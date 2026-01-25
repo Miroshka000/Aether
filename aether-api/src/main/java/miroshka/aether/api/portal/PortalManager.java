@@ -29,6 +29,7 @@ public interface PortalManager {
             String id,
             String sourceServer,
             String targetServer,
+            String world,
             PortalType type,
             BoundaryConfig boundary,
             RegionConfig region,
@@ -37,9 +38,9 @@ public interface PortalManager {
             double targetY,
             double targetZ) {
 
-        public static Portal boundary(String id, String sourceServer, String targetServer,
+        public static Portal boundary(String id, String sourceServer, String targetServer, String world,
                 int minX, int maxX, int minZ, int maxZ, boolean seamless) {
-            return new Portal(id, sourceServer, targetServer, PortalType.BOUNDARY,
+            return new Portal(id, sourceServer, targetServer, world, PortalType.BOUNDARY,
                     new BoundaryConfig(minX, maxX, minZ, maxZ), null, seamless, 0, 0, 0);
         }
 
@@ -48,7 +49,7 @@ public interface PortalManager {
                 int maxX, int maxY, int maxZ,
                 double targetX, double targetY, double targetZ,
                 boolean seamless) {
-            return new Portal(id, sourceServer, targetServer, PortalType.REGION,
+            return new Portal(id, sourceServer, targetServer, world, PortalType.REGION,
                     null, new RegionConfig(world, minX, minY, minZ, maxX, maxY, maxZ),
                     seamless, targetX, targetY, targetZ);
         }

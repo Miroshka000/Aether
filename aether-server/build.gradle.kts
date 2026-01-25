@@ -9,7 +9,7 @@ repositories {
 }
 
 allay {
-    api = "0.18.0"
+    api = "0.23.0"
     apiOnly = false
     generatePluginDescriptor = true
     

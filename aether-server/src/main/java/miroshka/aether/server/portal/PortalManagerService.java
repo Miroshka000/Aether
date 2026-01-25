@@ -6,6 +6,7 @@ import miroshka.aether.server.network.NodeNetworkClient;
 import org.allaymc.api.entity.interfaces.EntityPlayer;
 import org.allaymc.api.eventbus.EventHandler;
 import org.allaymc.api.eventbus.event.player.PlayerMoveEvent;
+import org.allaymc.api.plugin.Plugin;
 import org.allaymc.api.server.Server;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,14 +29,15 @@ public final class PortalManagerService implements PortalManager {
     private final NodeNetworkClient networkClient;
     private final String serverName;
     private final Map<String, Portal> portals;
-    private final Set<UUID> transferringPlayers;
+    private final Map<UUID, Long> lastTransferAttempt;
     private PortalConfig portalConfig;
 
-    public PortalManagerService(NodeNetworkClient networkClient, String serverName) {
+    public PortalManagerService(Plugin plugin, NodeNetworkClient networkClient, String serverName) {
+        Objects.requireNonNull(plugin, "plugin"); 
         this.networkClient = Objects.requireNonNull(networkClient, "networkClient");
         this.serverName = Objects.requireNonNull(serverName, "serverName");
         this.portals = new ConcurrentHashMap<>();
-        this.transferringPlayers = ConcurrentHashMap.newKeySet();
+        this.lastTransferAttempt = new ConcurrentHashMap<>();
     }
 
     public void loadFromConfig(Path dataFolder) {
@@ -46,38 +48,73 @@ public final class PortalManagerService implements PortalManager {
             return;
         }
 
-        for (PortalConfig.PortalEntry entry : portalConfig.portals()) {
-            Portal portal = createPortalFromConfig(entry);
-            portals.put(portal.id(), portal);
-            LOGGER.info("Loaded portal '{}' -> {} at {},{},{} to {},{},{}",
-                    entry.id(), entry.targetServer(),
-                    entry.minX(), entry.minY(), entry.minZ(),
-                    entry.maxX(), entry.maxY(), entry.maxZ());
+        portals.clear();
+        for (PortalConfig.PortalDefinition def : portalConfig.portals()) {
+            if (!def.enabled()) {
+                continue;
+            }
+            try {
+                Portal portal = createPortalFromConfig(def);
+                portals.put(portal.id(), portal);
+                LOGGER.info("Loaded portal '{}' -> {} (Type: {})",
+                        def.id(), def.targetServer(),
+                        portal.type());
+            } catch (Exception e) {
+                LOGGER.error("Failed to load portal {}", def.id(), e);
+            }
         }
 
-        if (!portals.isEmpty()) {
-            syncPortals();
-            LOGGER.info("Loaded {} portals from config", portals.size());
-        }
+        syncPortals();
+        LOGGER.info("Loaded {} portals from config", portals.size());
     }
 
-    private Portal createPortalFromConfig(PortalConfig.PortalEntry entry) {
-        RegionConfig region = new RegionConfig(
-                entry.world(),
-                entry.minX(), entry.minY(), entry.minZ(),
-                entry.maxX(), entry.maxY(), entry.maxZ());
+    private Portal createPortalFromConfig(PortalConfig.PortalDefinition def) {
+        if (def instanceof PortalConfig.RegionPortalDefinition regionDef) {
+            int x1 = regionDef.min().x();
+            int x2 = regionDef.max().x();
+            int y1 = regionDef.min().y();
+            int y2 = regionDef.max().y();
+            int z1 = regionDef.min().z();
+            int z2 = regionDef.max().z();
 
-        return new Portal(
-                entry.id(),
-                serverName,
-                entry.targetServer(),
-                PortalType.REGION,
-                null,
-                region,
-                entry.seamless(),
-                entry.targetX(),
-                entry.targetY(),
-                entry.targetZ());
+            int minX = Math.min(x1, x2);
+            int maxX = Math.max(x1, x2);
+            int minY = Math.min(y1, y2);
+            int maxY = Math.max(y1, y2);
+            int minZ = Math.min(z1, z2);
+            int maxZ = Math.max(z1, z2);
+
+            return Portal.region(
+                    regionDef.id(),
+                    serverName,
+                    regionDef.targetServer(),
+                    regionDef.world(),
+                    minX, minY, minZ,
+                    maxX, maxY, maxZ,
+                    0, 64, 0, // Default target spawn
+                    regionDef.seamless());
+        } else if (def instanceof PortalConfig.BoundaryPortalDefinition boundaryDef) {
+            int minX = Integer.MIN_VALUE, maxX = Integer.MAX_VALUE;
+            int minZ = Integer.MIN_VALUE, maxZ = Integer.MAX_VALUE;
+            int t = boundaryDef.threshold();
+
+            switch (boundaryDef.direction()) {
+                case EAST -> minX = t;          // X > t
+                case WEST -> maxX = t;          // X < t
+                case SOUTH -> minZ = t;         // Z > t
+                case NORTH -> maxZ = t;         // Z < t
+                default -> { /* Ignore UP/DOWN for 2D boundary */ }
+            }
+
+            return Portal.boundary(
+                    boundaryDef.id(),
+                    serverName,
+                    boundaryDef.targetServer(),
+                    boundaryDef.world(),
+                    minX, maxX, minZ, maxZ,
+                    boundaryDef.seamless());
+        }
+        throw new IllegalArgumentException("Unknown portal definition type: " + def.getClass().getName());
     }
 
     public void registerEvents() {
@@ -97,27 +134,21 @@ public final class PortalManagerService implements PortalManager {
         EntityPlayer player = event.getPlayer();
         UUID playerUuid = player.getUniqueId();
 
-        if (transferringPlayers.contains(playerUuid)) {
-            return;
-        }
-
         var to = event.getTo();
-        String worldName = player.getLocation().dimension().getWorld().getWorldData().getDisplayName();
+        String worldName = event.getFrom().dimension().getWorld().getWorldData().getDisplayName();
 
         findPortalAtLocation(worldName, to.x(), to.y(), to.z()).ifPresent(portal -> {
-            if (!transferringPlayers.add(playerUuid)) {
+            long now = System.currentTimeMillis();
+            long lastAttempt = lastTransferAttempt.getOrDefault(playerUuid, 0L);
+            if (now - lastAttempt < 5000) {
                 return;
             }
+            lastTransferAttempt.put(playerUuid, now);
 
             LOGGER.info("Player {} entered portal '{}', transferring to {}",
                     player.getDisplayName(), portal.id(), portal.targetServer());
 
-            transferPlayer(playerUuid, portal).whenComplete((result, ex) -> {
-                Server.getInstance().getScheduler().scheduleDelayed(null, () -> {
-                    transferringPlayers.remove(playerUuid);
-                    return false;
-                }, 100);
-            });
+            transferPlayer(playerUuid, portal);
         });
     }
 
@@ -191,12 +222,16 @@ public final class PortalManagerService implements PortalManager {
 
     @Override
     public Optional<Portal> findPortalAtLocation(String world, double x, double y, double z) {
-        int ix = (int) x;
-        int iy = (int) y;
-        int iz = (int) z;
+        int ix = (int) Math.floor(x);
+        int iy = (int) Math.floor(y);
+        int iz = (int) Math.floor(z);
 
         for (Portal portal : portals.values()) {
             if (!serverName.equals(portal.sourceServer())) {
+                continue;
+            }
+            
+            if (!portal.world().equals(world)) {
                 continue;
             }
 

@@ -44,6 +44,10 @@ portals:
       # Тип портала: BOUNDARY, REGION или NPC
       type: BOUNDARY
 
+      # Enable this portal
+      # Включен ли этот портал
+      enabled: false
+
       # Source server name (where portal exists)
       # Исходный сервер (где находится портал)
       source-server: lobby
@@ -74,10 +78,11 @@ portals:
 
     # EXAMPLE 2: Region-based portal
     # ПРИМЕР 2: Зональный портал
-    minigames-portal:
+    survival-portal:
       type: REGION
+      enabled: true
       source-server: lobby
-      target-server: minigames
+      target-server: survival
       seamless: true
 
       # Region configuration (for type: REGION)
@@ -89,46 +94,12 @@ portals:
 
         # First corner of portal region (min coordinates)
         # Первый угол региона портала (мин. координаты)
-        min-x: 100
-        min-y: 64
-        min-z: 100
+        min-x: -2
+        min-y: 107
+        min-z: 35
 
         # Second corner of portal region (max coordinates)
         # Второй угол региона портала (макс. координаты)
-        max-x: 110
-        max-y: 70
-        max-z: 110
-
-    # EXAMPLE 3: NPC portal
-    # ПРИМЕР 3: NPC портал
-    # npc-portal:
-    #   type: NPC
-    #   source-server: lobby
-    #   target-server: skyblock
-    #   seamless: true
-    #   npc:
-    #     id: "portal-npc-1"
-    #     skin: "eyJ0ZXh0dXJlcyI6..."
-
-# =============================================================================
-# Chunk Streaming (Experimental) / Стриминг чанков (Экспериментально)
-# =============================================================================
-# Pre-loads chunks from target server before transfer for seamless experience.
-# WARNING: This feature is experimental and may cause performance issues.
-#
-# Предзагружает чанки с целевого сервера перед переносом для бесшовного опыта.
-# ВНИМАНИЕ: Эта функция экспериментальная и может вызвать проблемы с производительностью.
-# =============================================================================
-
-chunk-streaming:
-  # Enable chunk streaming (EXPERIMENTAL - disabled by default)
-  # Включить стриминг чанков (ЭКСПЕРИМЕНТАЛЬНО - выключен по умолчанию)
-  enabled: false
-
-  # Number of chunks to pre-load (radius around spawn point)
-  # Количество чанков для предзагрузки (радиус вокруг точки спавна)
-  preload-radius: 3
-
-  # Maximum time to wait for chunks in milliseconds
-  # Максимальное время ожидания чанков в миллисекундах
-  timeout-ms: 5000
+        max-x: 2
+        max-y: 113
+        max-z: 36

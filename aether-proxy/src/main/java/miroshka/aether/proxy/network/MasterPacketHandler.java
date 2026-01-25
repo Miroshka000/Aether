@@ -67,6 +67,7 @@ public final class MasterPacketHandler extends ChannelInboundHandlerAdapter {
             case MetricsReportPacket metrics -> handleMetricsReport(metrics);
             case ProtocolErrorPacket error -> handleProtocolError(ctx, error);
             case TransferRequestPacket transfer -> handleTransferRequest(transfer);
+            case PortalSyncPacket portalSync -> handlePortalSync(portalSync);
             case EventBroadcastPacket event -> handleEventBroadcast(event);
             default -> LOGGER.warn("Unexpected packet type: {}", packet.getClass().getSimpleName());
         }
@@ -159,6 +160,13 @@ public final class MasterPacketHandler extends ChannelInboundHandlerAdapter {
             LOGGER.debug("Transfer request from {}: player {} to {}",
                     nodeId, transfer.playerName(), transfer.targetServer());
         }
+    }
+
+    private void handlePortalSync(PortalSyncPacket portalSync) {
+        if (!authenticated) {
+            return;
+        }
+        LOGGER.debug("Portal sync received from {}: {} portals", nodeId, portalSync.portals().size());
     }
 
     private void handleEventBroadcast(EventBroadcastPacket event) {

@@ -5,7 +5,7 @@ import java.util.Objects;
 
 public record PortalConfig(
         boolean enabled,
-        List<PortalEntry> portals) {
+        List<PortalDefinition> portals) {
 
     public PortalConfig {
         Objects.requireNonNull(portals, "portals");
@@ -15,58 +15,48 @@ public record PortalConfig(
         return new PortalConfig(true, List.of());
     }
 
-    public record PortalEntry(
+    public sealed interface PortalDefinition permits RegionPortalDefinition, BoundaryPortalDefinition {
+        String id();
+        String targetServer();
+        boolean seamless();
+        boolean enabled();
+    }
+
+    public record RegionPortalDefinition(
             String id,
             String targetServer,
+            boolean seamless,
+            boolean enabled,
             String world,
-            Position pos1,
-            Position pos2,
-            Position spawnPos,
-            boolean seamless) {
-
-        public PortalEntry {
+            Position min,
+            Position max) implements PortalDefinition {
+        public RegionPortalDefinition {
             Objects.requireNonNull(id, "id");
             Objects.requireNonNull(targetServer, "targetServer");
             Objects.requireNonNull(world, "world");
-            Objects.requireNonNull(pos1, "pos1");
-            Objects.requireNonNull(pos2, "pos2");
+            Objects.requireNonNull(min, "min");
+            Objects.requireNonNull(max, "max");
         }
+    }
 
-        public int minX() {
-            return Math.min(pos1.x(), pos2.x());
+    public record BoundaryPortalDefinition(
+            String id,
+            String targetServer,
+            boolean seamless,
+            boolean enabled,
+            String world,
+            Direction direction,
+            int threshold) implements PortalDefinition {
+        public BoundaryPortalDefinition {
+            Objects.requireNonNull(id, "id");
+            Objects.requireNonNull(targetServer, "targetServer");
+            Objects.requireNonNull(world, "world");
+            Objects.requireNonNull(direction, "direction");
         }
+    }
 
-        public int maxX() {
-            return Math.max(pos1.x(), pos2.x());
-        }
-
-        public int minY() {
-            return Math.min(pos1.y(), pos2.y());
-        }
-
-        public int maxY() {
-            return Math.max(pos1.y(), pos2.y());
-        }
-
-        public int minZ() {
-            return Math.min(pos1.z(), pos2.z());
-        }
-
-        public int maxZ() {
-            return Math.max(pos1.z(), pos2.z());
-        }
-
-        public int targetX() {
-            return spawnPos != null ? spawnPos.x() : 0;
-        }
-
-        public int targetY() {
-            return spawnPos != null ? spawnPos.y() : 64;
-        }
-
-        public int targetZ() {
-            return spawnPos != null ? spawnPos.z() : 0;
-        }
+    public enum Direction {
+        NORTH, SOUTH, EAST, WEST, UP, DOWN
     }
 
     public record Position(int x, int y, int z) {

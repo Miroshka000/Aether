@@ -53,7 +53,10 @@ public final class SeamlessTransferHandler {
     }
 
     public void handleTransferRequest(TransferRequestPacket packet) {
-        transfer(packet.playerUuid(), packet.targetServer(), packet.seamless());
+        TransferResult result = transfer(packet.playerUuid(), packet.targetServer(), packet.seamless());
+        if (!result.success()) {
+            LOGGER.warn("Failed to handle transfer request for player {}: {}", packet.playerUuid(), result.message());
+        }
     }
 
     private TransferResult executeTransfer(ProxiedPlayer player, ServerInfo targetServer, boolean seamless) {

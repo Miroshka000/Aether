@@ -30,7 +30,6 @@ public final class AetherServerAPI implements AetherAPI {
     private volatile AetherEventBridge eventBridge;
     private volatile DistributedPDC distributedPDC;
     private volatile LoadBalancer loadBalancer;
-    private volatile ChunkStreaming chunkStreaming;
 
     public AetherServerAPI(
             NodeNetworkClient networkClient,
@@ -167,7 +166,7 @@ public final class AetherServerAPI implements AetherAPI {
 
     @Override
     public Optional<ChunkStreaming> getChunkStreaming() {
-        return Optional.ofNullable(chunkStreaming);
+        return Optional.empty();
     }
 
     public void setPortalManager(PortalManager portalManager) {
@@ -184,10 +183,6 @@ public final class AetherServerAPI implements AetherAPI {
 
     public void setLoadBalancer(LoadBalancer loadBalancer) {
         this.loadBalancer = loadBalancer;
-    }
-
-    public void setChunkStreaming(ChunkStreaming chunkStreaming) {
-        this.chunkStreaming = chunkStreaming;
     }
 
     public void notifyStateChanged(NetworkStatePacket state) {

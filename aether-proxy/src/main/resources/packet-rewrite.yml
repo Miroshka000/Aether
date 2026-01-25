@@ -25,16 +25,10 @@ packet-rewrite:
 
     # Entity Filter Transformer
     # Фильтр сущностей
-    #
-    # Allows hiding specific entities from players based on
-    # server, entity type, or name pattern.
-    #
-    # Позволяет скрывать определённые сущности от игроков
-    # по серверу, типу сущности или паттерну имени.
     entity-filter:
       # Enable this transformer
       # Включить этот трансформер
-      enabled: true
+      enabled: false
 
       # Priority (higher = processes first)
       # Приоритет (выше = обрабатывается раньше)
@@ -48,30 +42,13 @@ packet-rewrite:
         lobby:
           - type: npc
             name-pattern: ".*admin.*"
-          - type: npc
-            name-pattern: ".*staff.*"
-
-        # Hide armor stands in survival hub area
-        # Скрыть armor_stand в зоне хаба survival
-        survival:
-          - type: armor_stand
-            radius: 50
-            center-x: 0
-            center-y: 64
-            center-z: 0
 
     # Resource Pack Transformer
     # Трансформер ресурс-паков
-    #
-    # Overrides resource pack for specific servers or players.
-    # Useful for server-specific textures.
-    #
-    # Переопределяет ресурс-пак для определённых серверов или игроков.
-    # Полезно для серверо-специфичных текстур.
     resource-pack:
       # Enable this transformer
       # Включить этот трансформер
-      enabled: true
+      enabled: false
 
       # Priority (lower than entity-filter to process after)
       # Приоритет (ниже чем entity-filter для обработки после)
@@ -79,44 +56,7 @@ packet-rewrite:
 
       # Resource pack overrides per server
       # Переопределения ресурс-паков по серверам
-      overrides:
-        # Network-wide default pack
-        # Дефолтный пак для всей сети
-        lobby:
-          pack-id: "network-pack-v1"
-          pack-version: "1.0.0"
-          pack-size: 15728640  # Size in bytes / Размер в байтах
-          content-key: ""       # Encryption key if needed / Ключ шифрования если нужен
-          must-accept: true     # Require player to accept / Требовать принятие игроком
-
-        # Skyblock-specific pack
-        # Пак для skyblock
-        skyblock:
-          pack-id: "skyblock-pack-v2"
-          pack-version: "2.1.0"
-          pack-size: 20971520
-          must-accept: true
-          # Only apply to players in these groups
-          # Применять только к игрокам в этих группах
-          # groups:
-          #   - vip
-          #   - supporter
-
-    # Custom transformer (example)
-    # Кастомный трансформер (пример)
-    #
-    # You can add your own transformers by implementing
-    # PacketTransformer interface and specifying class here.
-    #
-    # Можно добавить свои трансформеры, реализовав
-    # интерфейс PacketTransformer и указав класс здесь.
-    # custom:
-    #   enabled: false
-    #   class: "com.example.MyCustomTransformer"
-    #   priority: 25
-    #   config:
-    #     key1: "value1"
-    #     key2: "value2"
+      overrides: []
 
   # Bypass settings - skip packet processing for certain players
   # Настройки обхода - пропуск обработки пакетов для определённых игроков

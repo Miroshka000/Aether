@@ -7,9 +7,6 @@ import miroshka.aether.common.event.EventBroadcastReceivedEvent;
 import miroshka.aether.common.event.PDCSyncReceivedEvent;
 import miroshka.aether.common.protocol.ProtocolConstants;
 import miroshka.aether.server.balancer.LoadBalancerService;
-import miroshka.aether.server.chunk.ChunkStreamService;
-import miroshka.aether.server.config.ChunkStreamingConfig;
-import miroshka.aether.server.config.ChunkStreamingConfigLoader;
 import miroshka.aether.server.config.NodeConfig;
 import miroshka.aether.server.config.NodeConfigLoader;
 import miroshka.aether.server.event.EventBridgeService;
@@ -33,7 +30,6 @@ public final class AetherServerPlugin extends Plugin {
     @Getter
     private AetherServerAPI api;
 
-    private ChunkStreamService chunkStreamService;
     private PortalManagerService portalManager;
     private EventBridgeService eventBridge;
     private DistributedPDCService distributedPDC;
@@ -48,7 +44,6 @@ public final class AetherServerPlugin extends Plugin {
         getPluginLogger().info("Aether Server starting...");
 
         NodeConfig config = loadConfig();
-        ChunkStreamingConfig chunkConfig = ChunkStreamingConfigLoader.load(getPluginContainer().dataFolder());
 
         stateCache = new NetworkStateCache(ProtocolConstants.STATE_STALE_THRESHOLD_MILLIS);
 
@@ -60,7 +55,7 @@ public final class AetherServerPlugin extends Plugin {
 
         networkClient = new NodeNetworkClient(config, stateCache, snapshotCollector);
 
-        initializeServices(config, chunkConfig);
+        initializeServices(config);
         subscribeToEvents();
 
         api = new AetherServerAPI(networkClient, stateCache, snapshotCollector);
@@ -75,11 +70,11 @@ public final class AetherServerPlugin extends Plugin {
             return false;
         }, 100);
 
-        logStartupInfo(chunkConfig);
+        logStartupInfo();
     }
 
-    private void initializeServices(NodeConfig config, ChunkStreamingConfig chunkConfig) {
-        portalManager = new PortalManagerService(networkClient, config.serverName());
+    private void initializeServices(NodeConfig config) {
+        portalManager = new PortalManagerService(this, networkClient, config.serverName());
         portalManager.loadFromConfig(getPluginContainer().dataFolder());
         portalManager.registerEvents();
 
@@ -88,11 +83,6 @@ public final class AetherServerPlugin extends Plugin {
         distributedPDC = new DistributedPDCService(networkClient, config.serverName());
 
         loadBalancer = new LoadBalancerService(stateCache);
-
-        chunkStreamService = new ChunkStreamService(networkClient, config.serverName());
-        chunkStreamService.setEnabled(chunkConfig.enabled());
-        chunkStreamService.setPreloadRadius(chunkConfig.preloadRadius());
-        chunkStreamService.setTimeoutMs(chunkConfig.timeoutMs());
     }
 
     private void subscribeToEvents() {
@@ -117,14 +107,9 @@ public final class AetherServerPlugin extends Plugin {
         api.setEventBridge(eventBridge);
         api.setDistributedPDC(distributedPDC);
         api.setLoadBalancer(loadBalancer);
-        api.setChunkStreaming(chunkStreamService);
     }
 
-    private void logStartupInfo(ChunkStreamingConfig chunkConfig) {
-        if (chunkConfig.enabled()) {
-            getPluginLogger().info("Chunk streaming enabled (EXPERIMENTAL) with radius {} and timeout {}ms",
-                    chunkConfig.preloadRadius(), chunkConfig.timeoutMs());
-        }
+    private void logStartupInfo() {
         getPluginLogger().info("Aether Server enabled successfully");
     }
 
@@ -137,10 +122,6 @@ public final class AetherServerPlugin extends Plugin {
         }
 
         unsubscribeFromEvents();
-
-        if (chunkStreamService != null) {
-            chunkStreamService.shutdown();
-        }
 
         if (networkClient != null) {
             networkClient.stop();
